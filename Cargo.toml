@@ -12,4 +12,4 @@ structopt = "0.3.5"
 
 [dependencies.sdl2]
 version = "0.32.2"
-features = ["bundled"]
+features = ["ttf"]
