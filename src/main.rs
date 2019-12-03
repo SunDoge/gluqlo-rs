@@ -2,12 +2,25 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::{Color, PixelFormatEnum};
 use sdl2::rect::Rect;
-use sdl2::surface::Surface;
+use sdl2::surface::{Surface, SurfaceRef};
 
 const FONT: &'static str = "gluqlo.ttf";
 const TITLE: &'static str = "Gluqlo 1.1";
 const DEFAULT_WIDTH: u32 = 1024;
 const DEFAULT_HEIGHT: u32 = 768;
+
+const FONT_COLOR: Color = Color {
+    r: 0xb7,
+    g: 0xb7,
+    b: 0xb7,
+    a: 0xff,
+};
+const BACKGROUND_COLOR: Color = Color {
+    r: 0x0f,
+    g: 0x0f,
+    b: 0x0f,
+    a: 0xff,
+};
 
 fn main() -> Result<(), String> {
     // println!("linked sdl2_ttf: {}", sdl2::ttf::get_linked_version());
@@ -70,6 +83,7 @@ fn main() -> Result<(), String> {
     let bgrect = Rect::new(0, 0, rectsize, rectsize);
 
     let bg = Surface::new(rectsize, rectsize, PixelFormatEnum::RGBA32)?;
+    fill_rounded_box_b(&bg, &bgrect, radius, BACKGROUND_COLOR);
 
     let timer_subsystem = sdl_context.timer()?;
     // let timer = timer_subsystem.add_timer(
@@ -93,4 +107,23 @@ fn main() -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn fill_rounded_box_b(dst: &SurfaceRef, coords: &Rect, r: u32, color: Color) {
+    let pixcolor = color.to_u32(&dst.pixel_format());
+    let rpsqrt2 = (r as f64 / 2.0_f64.sqrt()) as u32;
+    let yd = dst.pitch() as f32 / dst.pixel_format_enum().byte_size_per_pixel() as f32;
+    let mut w = coords.width() / 2 - 1;
+    let mut h = coords.height() / 2 - 1;
+    let xo = coords.x() + w as i32;
+    let yo = coords.y() + h as i32;
+
+    w -= r;
+    h -= r;
+
+    if w <= 0 || h <= 0 {
+        return;
+    }
+
+    dst.with_lock(|pixels| {});
 }
