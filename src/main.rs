@@ -106,9 +106,11 @@ impl ScreenSaver {
 
     pub fn run(&mut self) {
         'running: loop {
+            let mut receive_user_event = false;
+
             for event in self.event_pump.poll_iter() {
                 match event {
-                    // Event::User { .. } => self.render_animation(),
+                    Event::User {..} => receive_user_event = true,
                     Event::Quit { .. } => break 'running,
                     Event::KeyDown { keycode, .. } => match keycode {
                         Some(Keycode::Escape) | Some(Keycode::Q) => break 'running,
@@ -116,6 +118,10 @@ impl ScreenSaver {
                     },
                     _ => {}
                 }
+            }
+
+            if receive_user_event {
+                self.render_animation();
             }
 
             // let mut screen = self.window.surface(&self.event_pump).unwrap();
