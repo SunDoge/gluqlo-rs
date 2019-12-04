@@ -39,16 +39,17 @@ struct Opt {
     display_scale_factor: f32,
 }
 
-struct ScreenSaver {
+struct ScreenSaver<'a> {
     window: Window,
     event_pump: EventPump,
     hour_background: Rect,
     min_background: Rect,
     bgrect: Rect,
+    bg: Surface<'a>,
 }
 
-impl ScreenSaver {
-    pub fn new(sdl_context: &Sdl, opt: &Opt) -> ScreenSaver {
+impl<'a> ScreenSaver<'a> {
+    pub fn new(sdl_context: &Sdl, opt: &Opt) -> ScreenSaver<'a> {
         let mut width = opt.width;
         let mut height = opt.height;
         let video_subsystem = sdl_context.video().unwrap();
@@ -95,12 +96,17 @@ impl ScreenSaver {
 
         let bgrect = Rect::new(0, 0, rectsize, rectsize);
 
+        // dbg!(PixelFormatEnum::RGB24.into_masks());
+        let mut bg = Surface::new(rectsize, rectsize, PixelFormatEnum::RGBA32).unwrap();
+        fill_rounded_box_b(&mut bg, &bgrect, radius, BACKGROUND_COLOR);
+
         ScreenSaver {
             window,
             event_pump,
             hour_background,
             min_background,
             bgrect,
+            bg,
         }
     }
 
