@@ -5,7 +5,7 @@ use sdl2::rect::Rect;
 use sdl2::surface::{Surface, SurfaceRef};
 // use std::time::{Duration, Instant};
 // use time;
-use sdl2::{ttf::Sdl2TtfContext, video::Window, Sdl};
+use sdl2::{ttf::Sdl2TtfContext, ttf::Font, video::Window, Sdl, EventPump, render::WindowCanvas};
 use std::fmt::Write;
 
 const FONT: &'static str = "gluqlo.ttf";
@@ -27,11 +27,13 @@ const BACKGROUND_COLOR: Color = Color {
 };
 
 struct ScreenSaver<'a> {
-    screen: Window,
+    screen: WindowCanvas,
     bg: Surface<'a>,
     bgrect: Rect,
     hour_background: Rect,
     min_background: Rect,
+    font_time: Font<'a, 'a>,
+    font_mode: Font<'a, 'a>,
     past_h: i32,
     past_m: i32,
     width: u32,
@@ -44,24 +46,35 @@ struct ScreenSaver<'a> {
     rectsize: u32,
     spacing: i32,
     radius: i32,
-
+    event_pump: EventPump,
 }
 
 impl<'a> ScreenSaver<'a> {
-    pub fn new(sdl_context: &'a Sdl) -> Result<ScreenSaver<'a>, String> {
+    pub fn new(sdl_context: &'a Sdl, ttf_context: &'a Sdl2TtfContext) -> Result<ScreenSaver<'a>, String> {
         let mut width = DEFAULT_WIDTH;
         let mut height = DEFAULT_HEIGHT;
         let mut display_scale_factor = 1.;
 
         let video_subsystem = sdl_context.video()?;
-        let screen = video_subsystem
+        let window = video_subsystem
             .window(TITLE, width, height)
             .build()
             .unwrap();
 
-        let (w, h) = screen.size();
+        let (w, h) = window.size();
         width = (w as f32 * display_scale_factor) as u32;
         height = (h as f32 * display_scale_factor) as u32;
+
+        let font_time = ttf_context
+            .load_font(FONT, (height as f32 / 1.68) as u16)
+            .unwrap();
+        let font_mode = ttf_context
+            .load_font(FONT, (height as f32 / 16.5) as u16)
+            .unwrap();
+
+        let mut screen = window.into_canvas().build().unwrap();
+        screen.set_draw_color(Color::RGB(0, 0, 0));
+        screen.fill_rect(None)?;
 
         let rectsize = (height as f32 * 0.6) as u32;
         let spacing = (width as f32 * 0.031) as i32;
@@ -93,6 +106,8 @@ impl<'a> ScreenSaver<'a> {
 
         let bgrect = Rect::new(0, 0, rectsize, rectsize);
         let bg = Surface::new(rectsize, rectsize, PixelFormatEnum::RGBA32)?;
+
+        let event_pump = sdl_context.event_pump()?;
     
         Ok(ScreenSaver {
             screen,
@@ -100,6 +115,8 @@ impl<'a> ScreenSaver<'a> {
             bgrect,
             hour_background,
             min_background,
+            font_time,
+            font_mode,
             width: DEFAULT_WIDTH,
             height: DEFAULT_HEIGHT,
             past_h: -1,
@@ -112,18 +129,19 @@ impl<'a> ScreenSaver<'a> {
             rectsize,
             spacing,
             radius,
+            event_pump
         })
     }
 
-    pub fn run(&mut self, sdl_context: &Sdl) -> Result<(), String> {
+    pub fn run(&mut self) -> Result<(), String> {
 
-        let ttf_context = sdl2::ttf::init().unwrap();
-        let font_time = ttf_context
-            .load_font(FONT, (self.height as f32 / 1.68) as u16)
-            .unwrap();
-        let font_mode = ttf_context
-            .load_font(FONT, (self.height as f32 / 16.5) as u16)
-            .unwrap();
+        // let ttf_context = sdl2::ttf::init().unwrap();
+        // let font_time = ttf_context
+        //     .load_font(FONT, (self.height as f32 / 1.68) as u16)
+        //     .unwrap();
+        // let font_mode = ttf_context
+        //     .load_font(FONT, (self.height as f32 / 16.5) as u16)
+        //     .unwrap();
 
         // let mut canvas = window.into_canvas().build().unwrap();
         // canvas.set_draw_color(Color::RGB(0, 0, 0));
@@ -132,10 +150,10 @@ impl<'a> ScreenSaver<'a> {
         self.fill_rounded_box_b(BACKGROUND_COLOR);
         self.render_clock(20, 19);
 
-        let mut event_pump = sdl_context.event_pump()?;
+        // let mut event_pump = sdl_context.event_pump()?;
 
         'running: loop {
-            for event in event_pump.poll_iter() {
+            for event in self.event_pump.poll_iter() {
                 match event {
                     Event::Quit { .. } => break 'running,
                     Event::KeyDown { keycode, .. } => match keycode {
@@ -152,7 +170,7 @@ impl<'a> ScreenSaver<'a> {
 
     fn fill_rounded_box_b(&mut self, color: Color) {
         let dst = &mut self.bg;
-        let coords  = &self.bgrect;
+        let coords = &self.bgrect;
         let r = self.radius;
 
         let pixcolor = color.to_u32(&dst.pixel_format());
@@ -247,9 +265,10 @@ fn main() -> Result<(), String> {
 
     // let bgrect = Rect::new(0, 0, rectsize, rectsize);
     // let mut bg = Surface::new(rectsize, rectsize, PixelFormatEnum::RGBA32)?;
+    let ttf_context = sdl2::ttf::init().unwrap();
 
-    let mut screen_saver = ScreenSaver::new(&sdl_context)?;
-    screen_saver.run(&sdl_context)
+    let mut screen_saver = ScreenSaver::new(&sdl_context, &ttf_context)?;
+    screen_saver.run()
 }
 
 fn _main() -> Result<(), String> {
