@@ -42,6 +42,9 @@ struct Opt {
 struct ScreenSaver {
     window: Window,
     event_pump: EventPump,
+    hour_background: Rect,
+    min_background: Rect,
+    bgrect: Rect,
 }
 
 impl ScreenSaver {
@@ -63,13 +66,49 @@ impl ScreenSaver {
         screen.fill_rect(None, Color::RGB(0, 255, 255)).unwrap();
         screen.finish().unwrap();
 
-        ScreenSaver { window, event_pump }
+        let rectsize = (height as f32 * 0.6) as u32;
+        let spacing = (width as f32 * 0.031) as i32;
+        let radius = (height as f32 * 0.05714) as i32;
+
+        let mut jitter_width: i32 = 1;
+        let mut jitter_height: i32 = 1;
+
+        if opt.display_scale_factor != 1. {
+            jitter_width = ((w - width) as f32 * 0.5) as i32;
+            jitter_height = ((h - height) as f32 * 0.5) as i32;
+        }
+
+        let hour_background = Rect::new(
+            (0.5 * (width as f32 - (0.031 * width as f32) - (1.2 * height as f32))) as i32
+                + jitter_width,
+            (0.2 * height as f32) as i32 + jitter_height,
+            rectsize,
+            rectsize,
+        );
+
+        let min_background = Rect::new(
+            hour_background.x() + (0.6 * height as f32) as i32 + spacing,
+            hour_background.y(),
+            rectsize,
+            rectsize,
+        );
+
+        let bgrect = Rect::new(0, 0, rectsize, rectsize);
+
+        ScreenSaver {
+            window,
+            event_pump,
+            hour_background,
+            min_background,
+            bgrect,
+        }
     }
 
     pub fn run(&mut self) {
         'running: loop {
             for event in self.event_pump.poll_iter() {
                 match event {
+                    // Event::User { .. } => self.render_animation(),
                     Event::Quit { .. } => break 'running,
                     Event::KeyDown { keycode, .. } => match keycode {
                         Some(Keycode::Escape) | Some(Keycode::Q) => break 'running,
