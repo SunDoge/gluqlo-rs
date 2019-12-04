@@ -109,9 +109,15 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
+fn set_pixels(pixels: &mut [u8], index: i32, pixcolor: u32) {
+    unsafe {
+        *(pixels.as_mut_ptr() as *mut u32).add(index as usize) = pixcolor;
+    }
+}
+
 fn fill_rounded_box_b(dst: &mut SurfaceRef, coords: &Rect, r: i32, color: Color) {
     let pixcolor = color.to_u32(&dst.pixel_format());
-    let rpsqrt2 = (r as f64 / 2.0_f64.sqrt()) as u32;
+    let rpsqrt2 = (r as f64 / 2.0_f64.sqrt()) as i32;
     let yd: i32 =
         (dst.pitch() as f32 / dst.pixel_format_enum().byte_size_per_pixel() as f32) as i32;
     let mut w: i32 = coords.width() as i32 / 2 - 1;
@@ -134,11 +140,44 @@ fn fill_rounded_box_b(dst: &mut SurfaceRef, coords: &Rect, r: i32, color: Color)
 
         for i in (sy..=ey).step_by(yd as usize) {
             for j in (sx - r)..=(ex + r) {
-                let index = (i + j) as usize;
-                pixels[index + 0] = color.r;
-                pixels[index + 1] = color.g;
-                pixels[index + 2] = color.b;
-                pixels[index + 3] = color.a;
+                // let index = (i + j) as usize;
+                // pixels[index + 0] = color.r;
+                // pixels[index + 1] = color.g;
+                // pixels[index + 2] = color.b;
+                // pixels[index + 3] = color.a;
+
+                // 如果我没理解错，就是一次赋4个值
+                set_pixels(pixels, i + j, pixcolor);
+            }
+        }
+
+        let mut d: i32 = -r;
+        let mut x2m1: i32 = -1;
+        let mut y: i32 = r;
+
+        for x in 0..=rpsqrt2 {
+            x2m1 += 2;
+            d += x2m1;
+
+            if d >= 0 {
+                y -= 1;
+                d -= y * 2;
+            }
+
+            for i in (sx - x)..=(ex + x) {
+                set_pixels(pixels, sy - y * yd + i, pixcolor);
+            }
+
+            for i in (sx - y)..=(ex + y) {
+                set_pixels(pixels, sy - x * yd + i, pixcolor);
+            }
+
+            for i in (sx - y)..=(ex + y) {
+                set_pixels(pixels, ey + y * yd + i, pixcolor);
+            }
+
+            for i in (sx - x)..=(ex + x) {
+                set_pixels(pixels, ey + x * yd + i, pixcolor);
             }
         }
     });
