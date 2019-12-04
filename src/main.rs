@@ -7,11 +7,11 @@ use sdl2::surface::{Surface, SurfaceRef};
 // use time;
 use sdl2::{ttf::Sdl2TtfContext, video::Window, Sdl, EventPump};
 use std::fmt::Write;
+use structopt::StructOpt;
 
 const FONT: &'static str = "gluqlo.ttf";
 const TITLE: &'static str = "Gluqlo 1.1";
-const DEFAULT_WIDTH: u32 = 1024;
-const DEFAULT_HEIGHT: u32 = 768;
+
 
 const DEFAULT_A: u8 = 0xff;
 const FONT_COLOR: Color = Color {
@@ -27,15 +27,27 @@ const BACKGROUND_COLOR: Color = Color {
     a: DEFAULT_A,
 };
 
+#[derive(StructOpt, Debug)]
+#[structopt(name = "basic")]
+struct Opt {
+
+    #[structopt(short, long, default_value="1024")]
+    width: u32,
+
+    #[structopt(short, long, default_value="768")]
+    height: u32,
+}
+
+
 struct ScreenSaver {
     window: Window,
     event_pump: EventPump,
 }
 
 impl ScreenSaver {
-    pub fn new(sdl_context: &Sdl) -> ScreenSaver {
-        let mut width = DEFAULT_WIDTH;
-        let mut heigth = DEFAULT_HEIGHT;
+    pub fn new(sdl_context: &Sdl, opt: &Opt) -> ScreenSaver {
+        let mut width = opt.width;
+        let mut heigth = opt.height;
         let video_subsystem = sdl_context.video().unwrap();
         let window = video_subsystem.window(TITLE, width, heigth)
             .build().unwrap();
@@ -76,9 +88,13 @@ impl ScreenSaver {
 }
 
 fn main() -> Result<(), String> {
+    let opt = Opt::from_args();
+
+    println!("{:#?}", opt);
+
     let sdl_context = sdl2::init()?;
 
-    let mut screen_saver = ScreenSaver::new(&sdl_context);
+    let mut screen_saver = ScreenSaver::new(&sdl_context, &opt);
 
     screen_saver.run();
 
