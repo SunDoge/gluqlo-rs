@@ -5,7 +5,7 @@ use sdl2::rect::Rect;
 use sdl2::surface::{Surface, SurfaceRef};
 // use std::time::{Duration, Instant};
 // use time;
-use sdl2::{ttf::Sdl2TtfContext, Sdl};
+use sdl2::{ttf::Sdl2TtfContext, video::Window, Sdl};
 use std::fmt::Write;
 
 const FONT: &'static str = "gluqlo.ttf";
@@ -26,8 +26,9 @@ const BACKGROUND_COLOR: Color = Color {
     a: 0xff,
 };
 
-struct ScreenSaver {
-    sdl_context: Sdl,
+struct ScreenSaver<'a> {
+    screen: Window,
+    bg: &'a Surface<'a>,
     past_h: i32,
     past_m: i32,
     width: u32,
@@ -39,42 +40,25 @@ struct ScreenSaver {
     animate: bool,
 }
 
-impl ScreenSaver {
-    pub fn new() -> Result<ScreenSaver, String> {
-        let mut width = DEFAULT_WIDTH;
-        let mut height = DEFAULT_HEIGHT;
-        let mut display_scale_factor = 1.;
-
-        let sdl_context = sdl2::init()?;
-
-        let timer_subsystem = sdl_context.timer()?;
-        // let timer = timer_subsystem.add_timer(
-        //     60,
-
-        // )
-
-        Ok(ScreenSaver {
-            width,
-            height,
-            sdl_context,
+impl<'a> ScreenSaver<'a> {
+    pub fn new(screen: Window, bg: &'a Surface) -> ScreenSaver<'a> {
+        ScreenSaver {
+            screen,
+            bg,
+            width: DEFAULT_WIDTH,
+            height: DEFAULT_HEIGHT,
             past_h: -1,
             past_m: -1,
-            display_scale_factor,
+            display_scale_factor: 1.,
             twentyfourh: true,
             leadingzero: false,
             fullscreen: false,
             animate: true,
-        })
+        }
     }
 
-    pub fn run(&mut self) -> Result<(), String> {
-        let video_subsystem = self.sdl_context.video()?;
-        let window = video_subsystem
-            .window(TITLE, self.width, self.height)
-            .build()
-            .unwrap();
-
-        let (w, h) = window.size();
+    pub fn run(&mut self, sdl_context: &Sdl) -> Result<(), String> {
+        let (w, h) = self.screen.size();
         self.width = (w as f32 * self.display_scale_factor) as u32;
         self.height = (h as f32 * self.display_scale_factor) as u32;
 
@@ -86,9 +70,9 @@ impl ScreenSaver {
             .load_font(FONT, (self.height as f32 / 16.5) as u16)
             .unwrap();
 
-        let mut canvas = window.into_canvas().build().unwrap();
-        canvas.set_draw_color(Color::RGB(0, 0, 0));
-        canvas.fill_rect(None)?;
+        // let mut canvas = window.into_canvas().build().unwrap();
+        // canvas.set_draw_color(Color::RGB(0, 0, 0));
+        // canvas.fill_rect(None)?;
 
         let rectsize = (self.height as f32 * 0.6) as u32;
         let spacing = (self.width as f32 * 0.031) as i32;
@@ -123,7 +107,7 @@ impl ScreenSaver {
         self.fill_rounded_box_b(&mut bg, &bgrect, radius, BACKGROUND_COLOR);
         self.render_clock(20, 19);
 
-        let mut event_pump = self.sdl_context.event_pump()?;
+        let mut event_pump = sdl_context.event_pump()?;
 
         'running: loop {
             for event in event_pump.poll_iter() {
@@ -219,11 +203,24 @@ impl ScreenSaver {
             }
         }
     }
+
+    fn render_digits(&mut self) {}
 }
 
 fn main() -> Result<(), String> {
-    let mut screen_saver = ScreenSaver::new()?;
-    screen_saver.run()
+    let sdl_context = sdl2::init()?;
+    let video_subsystem = sdl_context.video()?;
+    let screen = video_subsystem
+        .window(TITLE, DEFAULT_WIDTH, DEFAULT_HEIGHT)
+        .build()
+        .unwrap();
+    let rectsize = 100;
+
+    let bgrect = Rect::new(0, 0, rectsize, rectsize);
+    let mut bg = Surface::new(rectsize, rectsize, PixelFormatEnum::RGBA32)?;
+
+    let mut screen_saver = ScreenSaver::new(screen, &bg);
+    screen_saver.run(&sdl_context)
 }
 
 fn _main() -> Result<(), String> {
