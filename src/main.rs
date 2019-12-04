@@ -30,12 +30,14 @@ const BACKGROUND_COLOR: Color = Color {
 #[derive(StructOpt, Debug)]
 #[structopt(name = "basic")]
 struct Opt {
-
-    #[structopt(short, long, default_value="1024")]
+    #[structopt(short, long, default_value = "1024")]
     width: u32,
 
-    #[structopt(short, long, default_value="768")]
+    #[structopt(short, long, default_value = "768")]
     height: u32,
+
+    #[structopt(short = "s", long, default_value = "1.")]
+    display_scale_factor: f32,
 }
 
 
@@ -47,12 +49,20 @@ struct ScreenSaver {
 impl ScreenSaver {
     pub fn new(sdl_context: &Sdl, opt: &Opt) -> ScreenSaver {
         let mut width = opt.width;
-        let mut heigth = opt.height;
+        let mut height = opt.height;
         let video_subsystem = sdl_context.video().unwrap();
-        let window = video_subsystem.window(TITLE, width, heigth)
+        let window = video_subsystem.window(TITLE, width, height)
             .build().unwrap();
-
         let event_pump = sdl_context.event_pump().unwrap();
+
+        let (w, h) = window.size();
+        width = (w as f32 * opt.display_scale_factor) as u32;
+        height = (h as f32 * opt.display_scale_factor) as u32;
+
+
+        let mut screen = window.surface(&event_pump).unwrap();
+        screen.fill_rect(None, Color::RGB(0, 255, 255)).unwrap();
+        screen.finish().unwrap();
 
         ScreenSaver { window, event_pump }
     }
