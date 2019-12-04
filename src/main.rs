@@ -55,7 +55,7 @@ fn main() -> Result<(), String> {
 
     let rectsize = (height as f32 * 0.6) as u32;
     let spacing = (width as f32 * 0.031) as i32;
-    let radius = (height as f32 * 0.05714) as u32;
+    let radius = (height as f32 * 0.05714) as i32;
 
     let mut jitter_width: i32 = 1;
     let mut jitter_height: i32 = 1;
@@ -82,8 +82,8 @@ fn main() -> Result<(), String> {
 
     let bgrect = Rect::new(0, 0, rectsize, rectsize);
 
-    let bg = Surface::new(rectsize, rectsize, PixelFormatEnum::RGBA32)?;
-    fill_rounded_box_b(&bg, &bgrect, radius, BACKGROUND_COLOR);
+    let mut bg = Surface::new(rectsize, rectsize, PixelFormatEnum::RGBA32)?;
+    fill_rounded_box_b(&mut bg, &bgrect, radius, BACKGROUND_COLOR);
 
     let timer_subsystem = sdl_context.timer()?;
     // let timer = timer_subsystem.add_timer(
@@ -109,12 +109,13 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-fn fill_rounded_box_b(dst: &SurfaceRef, coords: &Rect, r: u32, color: Color) {
+fn fill_rounded_box_b(dst: &mut SurfaceRef, coords: &Rect, r: i32, color: Color) {
     let pixcolor = color.to_u32(&dst.pixel_format());
     let rpsqrt2 = (r as f64 / 2.0_f64.sqrt()) as u32;
-    let yd = dst.pitch() as f32 / dst.pixel_format_enum().byte_size_per_pixel() as f32;
-    let mut w = coords.width() / 2 - 1;
-    let mut h = coords.height() / 2 - 1;
+    let yd: i32 =
+        (dst.pitch() as f32 / dst.pixel_format_enum().byte_size_per_pixel() as f32) as i32;
+    let mut w: i32 = coords.width() as i32 / 2 - 1;
+    let mut h: i32 = coords.height() as i32 / 2 - 1;
     let xo = coords.x() + w as i32;
     let yo = coords.y() + h as i32;
 
@@ -125,5 +126,20 @@ fn fill_rounded_box_b(dst: &SurfaceRef, coords: &Rect, r: u32, color: Color) {
         return;
     }
 
-    dst.with_lock(|pixels| {});
+    dst.with_lock_mut(|pixels| {
+        let sy: i32 = (yo - h) * yd;
+        let ey: i32 = (yo + h) * yd;
+        let sx: i32 = xo - w;
+        let ex: i32 = xo + w;
+
+        for i in (sy..=ey).step_by(yd as usize) {
+            for j in (sx - r)..=(ex + r) {
+                let index = (i + j) as usize;
+                pixels[index + 0] = color.r;
+                pixels[index + 1] = color.g;
+                pixels[index + 2] = color.b;
+                pixels[index + 3] = color.a;
+            }
+        }
+    });
 }
