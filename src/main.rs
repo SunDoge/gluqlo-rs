@@ -28,7 +28,9 @@ const BACKGROUND_COLOR: Color = Color {
 
 struct ScreenSaver<'a> {
     screen: Window,
-    bg: &'a Surface<'a>,
+    bg: Surface<'a>,
+    hour_background: Rect,
+    min_background: Rect,
     past_h: i32,
     past_m: i32,
     width: u32,
@@ -41,10 +43,59 @@ struct ScreenSaver<'a> {
 }
 
 impl<'a> ScreenSaver<'a> {
-    pub fn new(screen: Window, bg: &'a Surface) -> ScreenSaver<'a> {
-        ScreenSaver {
+    pub fn new(sdl_context: &'a Sdl) -> Result<ScreenSaver<'a>, String> {
+        let mut width = DEFAULT_WIDTH;
+        let mut height = DEFAULT_HEIGHT;
+        let mut display_scale_factor = 1.;
+
+        let video_subsystem = sdl_context.video()?;
+        let screen = video_subsystem
+            .window(TITLE, width, height)
+            .build()
+            .unwrap();
+
+        let (w, h) = screen.size();
+        width = (w as f32 * display_scale_factor) as u32;
+        height = (h as f32 * display_scale_factor) as u32;
+
+        let rectsize = (height as f32 * 0.6) as u32;
+        let spacing = (width as f32 * 0.031) as i32;
+        let radius = (height as f32 * 0.05714) as i32;
+
+        let mut jitter_width: i32 = 1;
+        let mut jitter_height: i32 = 1;
+
+        if display_scale_factor != 1. {
+            jitter_width = ((w - width) as f32 * 0.5) as i32;
+            jitter_height = ((h - height) as f32 * 0.5) as i32;
+        }
+
+        let hour_background = Rect::new(
+            (0.5 * (width as f32 - (0.031 * width as f32) - (1.2 * height as f32))) as i32
+                + jitter_width,
+            (0.2 * height as f32) as i32 + jitter_height,
+            rectsize,
+            rectsize,
+        );
+
+        let min_background = Rect::new(
+            hour_background.x() + (0.6 * height as f32) as i32 + spacing,
+            hour_background.y(),
+            rectsize,
+            rectsize,
+        );
+
+
+        let bgrect = Rect::new(0, 0, rectsize, rectsize);
+        let mut bg = Surface::new(rectsize, rectsize, PixelFormatEnum::RGBA32)?;
+        fill_rounded_box_b(&mut bg, &bgrect, radius, BACKGROUND_COLOR);
+        
+
+        Ok(ScreenSaver {
             screen,
             bg,
+            hour_background,
+            min_background,
             width: DEFAULT_WIDTH,
             height: DEFAULT_HEIGHT,
             past_h: -1,
@@ -54,7 +105,7 @@ impl<'a> ScreenSaver<'a> {
             leadingzero: false,
             fullscreen: false,
             animate: true,
-        }
+        })
     }
 
     pub fn run(&mut self, sdl_context: &Sdl) -> Result<(), String> {
@@ -209,17 +260,17 @@ impl<'a> ScreenSaver<'a> {
 
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
-    let video_subsystem = sdl_context.video()?;
-    let screen = video_subsystem
-        .window(TITLE, DEFAULT_WIDTH, DEFAULT_HEIGHT)
-        .build()
-        .unwrap();
-    let rectsize = 100;
+    // let video_subsystem = sdl_context.video()?;
+    // let screen = video_subsystem
+    //     .window(TITLE, DEFAULT_WIDTH, DEFAULT_HEIGHT)
+    //     .build()
+    //     .unwrap();
+    // let rectsize = 100;
 
-    let bgrect = Rect::new(0, 0, rectsize, rectsize);
-    let mut bg = Surface::new(rectsize, rectsize, PixelFormatEnum::RGBA32)?;
+    // let bgrect = Rect::new(0, 0, rectsize, rectsize);
+    // let mut bg = Surface::new(rectsize, rectsize, PixelFormatEnum::RGBA32)?;
 
-    let mut screen_saver = ScreenSaver::new(screen, &bg);
+    let mut screen_saver = ScreenSaver::new(&sdl_context)?;
     screen_saver.run(&sdl_context)
 }
 
