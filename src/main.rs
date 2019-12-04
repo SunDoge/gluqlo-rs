@@ -29,6 +29,7 @@ const BACKGROUND_COLOR: Color = Color {
 struct ScreenSaver<'a> {
     screen: Window,
     bg: Surface<'a>,
+    bgrect: Rect,
     hour_background: Rect,
     min_background: Rect,
     past_h: i32,
@@ -40,6 +41,10 @@ struct ScreenSaver<'a> {
     leadingzero: bool,
     fullscreen: bool,
     animate: bool,
+    rectsize: u32,
+    spacing: i32,
+    radius: i32,
+
 }
 
 impl<'a> ScreenSaver<'a> {
@@ -87,13 +92,12 @@ impl<'a> ScreenSaver<'a> {
 
 
         let bgrect = Rect::new(0, 0, rectsize, rectsize);
-        let mut bg = Surface::new(rectsize, rectsize, PixelFormatEnum::RGBA32)?;
-        fill_rounded_box_b(&mut bg, &bgrect, radius, BACKGROUND_COLOR);
-        
-
+        let bg = Surface::new(rectsize, rectsize, PixelFormatEnum::RGBA32)?;
+    
         Ok(ScreenSaver {
             screen,
             bg,
+            bgrect,
             hour_background,
             min_background,
             width: DEFAULT_WIDTH,
@@ -105,13 +109,13 @@ impl<'a> ScreenSaver<'a> {
             leadingzero: false,
             fullscreen: false,
             animate: true,
+            rectsize,
+            spacing,
+            radius,
         })
     }
 
     pub fn run(&mut self, sdl_context: &Sdl) -> Result<(), String> {
-        let (w, h) = self.screen.size();
-        self.width = (w as f32 * self.display_scale_factor) as u32;
-        self.height = (h as f32 * self.display_scale_factor) as u32;
 
         let ttf_context = sdl2::ttf::init().unwrap();
         let font_time = ttf_context
@@ -125,37 +129,7 @@ impl<'a> ScreenSaver<'a> {
         // canvas.set_draw_color(Color::RGB(0, 0, 0));
         // canvas.fill_rect(None)?;
 
-        let rectsize = (self.height as f32 * 0.6) as u32;
-        let spacing = (self.width as f32 * 0.031) as i32;
-        let radius = (self.height as f32 * 0.05714) as i32;
-
-        let mut jitter_width: i32 = 1;
-        let mut jitter_height: i32 = 1;
-
-        if self.display_scale_factor != 1. {
-            jitter_width = ((w - self.width) as f32 * 0.5) as i32;
-            jitter_height = ((h - self.height) as f32 * 0.5) as i32;
-        }
-
-        let hour_background = Rect::new(
-            (0.5 * (self.width as f32 - (0.031 * self.width as f32) - (1.2 * self.height as f32)))
-                as i32
-                + jitter_width,
-            (0.2 * self.height as f32) as i32 + jitter_height,
-            rectsize,
-            rectsize,
-        );
-
-        let min_background = Rect::new(
-            hour_background.x() + (0.6 * self.height as f32) as i32 + spacing,
-            hour_background.y(),
-            rectsize,
-            rectsize,
-        );
-
-        let bgrect = Rect::new(0, 0, rectsize, rectsize);
-        let mut bg = Surface::new(rectsize, rectsize, PixelFormatEnum::RGBA32)?;
-        self.fill_rounded_box_b(&mut bg, &bgrect, radius, BACKGROUND_COLOR);
+        self.fill_rounded_box_b(BACKGROUND_COLOR);
         self.render_clock(20, 19);
 
         let mut event_pump = sdl_context.event_pump()?;
@@ -176,7 +150,11 @@ impl<'a> ScreenSaver<'a> {
         Ok(())
     }
 
-    fn fill_rounded_box_b(&mut self, dst: &mut SurfaceRef, coords: &Rect, r: i32, color: Color) {
+    fn fill_rounded_box_b(&mut self, color: Color) {
+        let dst = &mut self.bg;
+        let coords  = &self.bgrect;
+        let r = self.radius;
+
         let pixcolor = color.to_u32(&dst.pixel_format());
         let rpsqrt2 = (r as f64 / 2.0_f64.sqrt()) as i32;
         let yd: i32 =
