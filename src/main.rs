@@ -5,7 +5,7 @@ use sdl2::rect::Rect;
 use sdl2::surface::{Surface, SurfaceRef};
 // use std::time::{Duration, Instant};
 // use time;
-use sdl2::{ttf::Sdl2TtfContext, video::Window, EventPump, Sdl};
+use sdl2::{ttf::Sdl2TtfContext, video::Window, EventPump, Sdl, ttf::Font, video::WindowSurfaceRef};
 use std::fmt::Write;
 use structopt::StructOpt;
 
@@ -37,6 +37,12 @@ struct Opt {
 
     #[structopt(short = "s", long, default_value = "1.")]
     display_scale_factor: f32,
+
+    #[structopt(long = "ampm")]
+    ampm: bool,
+
+    #[structopt(long="leardingzero")]
+    leadingzero: bool,
 }
 
 struct ScreenSaver<'a> {
@@ -46,10 +52,15 @@ struct ScreenSaver<'a> {
     min_background: Rect,
     bgrect: Rect,
     bg: Surface<'a>,
+    font_time: Font<'a, 'a>,
+    font_mode: Font<'a, 'a>,
+    opt: &'a Opt,
+    past_h: i32,
+    past_m: i32,
 }
 
 impl<'a> ScreenSaver<'a> {
-    pub fn new(sdl_context: &Sdl, opt: &Opt) -> ScreenSaver<'a> {
+    pub fn new(sdl_context: &Sdl, ttf_context: &'a Sdl2TtfContext,opt: &'a Opt) -> ScreenSaver<'a> {
         let mut width = opt.width;
         let mut height = opt.height;
         let video_subsystem = sdl_context.video().unwrap();
@@ -62,6 +73,13 @@ impl<'a> ScreenSaver<'a> {
         let (w, h) = window.size();
         width = (w as f32 * opt.display_scale_factor) as u32;
         height = (h as f32 * opt.display_scale_factor) as u32;
+
+        let font_time = ttf_context
+            .load_font(FONT, (height as f32 / 1.68) as u16)
+            .unwrap();
+        let font_mode = ttf_context
+            .load_font(FONT, (height as f32 / 16.5) as u16)
+            .unwrap();
 
         let mut screen = window.surface(&event_pump).unwrap();
         screen.fill_rect(None, Color::RGB(0, 255, 255)).unwrap();
@@ -107,10 +125,17 @@ impl<'a> ScreenSaver<'a> {
             min_background,
             bgrect,
             bg,
+            font_time,
+            font_mode,
+            opt,
+            past_h: -1,
+            past_m: -1,
         }
     }
 
     pub fn run(&mut self) {
+        self.render_clock(20, 19);
+
         'running: loop {
             let mut receive_user_event = false;
 
@@ -138,13 +163,57 @@ impl<'a> ScreenSaver<'a> {
 
     fn fill_rounded_box_b(&mut self) {}
 
-    fn render_ampm(&mut self) {}
+    fn render_ampm(&self, surface: &mut SurfaceRef, rect: &Rect, pm: bool) {
+        let mode = format!(
+            "{}M", if pm {"P"} else {"A"}
+        );
+
+        let ampm = self.font_mode.render(&mode).blended(FONT_COLOR).unwrap();
+
+        let offset = (rect.height() as f32 * 0.127) as i32;
+        let coords = Rect::new(
+            rect.x() + (rect.height() as f32 * 0.07) as i32, 
+            rect.y() + if pm {rect.height() as i32 -offset - ampm.height() as i32} else {offset}, 
+            0, 
+            0);
+        
+        // surface.blit(src_rect: R1, dst: &mut SurfaceRef, dst_rect: R2)
+        ampm.blit(None, surface, coords);
+    }
 
     fn blit_digits(&mut self) {}
 
     fn render_digits(&mut self) {}
 
-    fn render_clock(&mut self) {}
+    fn render_clock(&mut self, maxsteps: i32, step: i32) {
+        let mut buffer = String::with_capacity(3);
+        let mut buffer2 = String::with_capacity(3);
+
+        let tm = time::now();
+        let mut screen = self.window.surface(&self.event_pump).unwrap();
+
+        if tm.tm_hour != self.past_h {
+            let h = if self.opt.ampm {
+                (tm.tm_hour + 11) % 12 + 1
+            } else {
+                tm.tm_hour
+            };
+
+            if self.opt.leadingzero {
+                write!(buffer, "{:02}", h);
+                write!(buffer2, "{:02}", self.past_h);
+            } else {
+                write!(buffer, "{}", h);
+                write!(buffer2, "{}", self.past_h);
+            }
+
+            if self.opt.ampm {
+                self.render_ampm(&mut screen, &self.hour_background, tm.tm_hour >= 12);
+            }
+        }
+
+        screen.finish().unwrap();
+    }
 
     fn render_animation(&mut self) {}
 
@@ -157,8 +226,9 @@ fn main() -> Result<(), String> {
     println!("{:#?}", opt);
 
     let sdl_context = sdl2::init()?;
+    let ttf_context = sdl2::ttf::init().unwrap();
 
-    let mut screen_saver = ScreenSaver::new(&sdl_context, &opt);
+    let mut screen_saver = ScreenSaver::new(&sdl_context, &ttf_context,&opt);
 
     screen_saver.run();
 
