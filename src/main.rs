@@ -5,13 +5,12 @@ use sdl2::rect::Rect;
 use sdl2::surface::{Surface, SurfaceRef};
 // use std::time::{Duration, Instant};
 // use time;
-use sdl2::{ttf::Sdl2TtfContext, video::Window, Sdl, EventPump};
+use sdl2::{ttf::Sdl2TtfContext, video::Window, EventPump, Sdl};
 use std::fmt::Write;
 use structopt::StructOpt;
 
 const FONT: &'static str = "gluqlo.ttf";
 const TITLE: &'static str = "Gluqlo 1.1";
-
 
 const DEFAULT_A: u8 = 0xff;
 const FONT_COLOR: Color = Color {
@@ -40,7 +39,6 @@ struct Opt {
     display_scale_factor: f32,
 }
 
-
 struct ScreenSaver {
     window: Window,
     event_pump: EventPump,
@@ -51,14 +49,15 @@ impl ScreenSaver {
         let mut width = opt.width;
         let mut height = opt.height;
         let video_subsystem = sdl_context.video().unwrap();
-        let window = video_subsystem.window(TITLE, width, height)
-            .build().unwrap();
+        let window = video_subsystem
+            .window(TITLE, width, height)
+            .build()
+            .unwrap();
         let event_pump = sdl_context.event_pump().unwrap();
 
         let (w, h) = window.size();
         width = (w as f32 * opt.display_scale_factor) as u32;
         height = (h as f32 * opt.display_scale_factor) as u32;
-
 
         let mut screen = window.surface(&event_pump).unwrap();
         screen.fill_rect(None, Color::RGB(0, 255, 255)).unwrap();
@@ -79,6 +78,10 @@ impl ScreenSaver {
                     _ => {}
                 }
             }
+
+            // let mut screen = self.window.surface(&self.event_pump).unwrap();
+            // screen.fill_rect(None, Color::RGB(0, 255, 255)).unwrap();
+            // screen.finish().unwrap();
         }
     }
 
