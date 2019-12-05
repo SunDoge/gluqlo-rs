@@ -190,17 +190,70 @@ impl<'a> ScreenSaver<'a> {
         ampm.blit(None, surface, coords);
     }
 
-    fn blit_digits(&self, surface: &mut SurfaceRef, rect: &Rect, spc: i32, digits: &str, color: Color) {
-        let adjust_x = if digits.starts_with("1") {
+    fn blit_digits(
+        &self,
+        surface: &mut SurfaceRef,
+        rect: Rect,
+        spc: i32,
+        digits: &[u8],
+        color: Color,
+    ) {
+        let adjust_x = if digits[0] == b'1' {
             (2.5 * spc as f32) as i32
         } else {
             0
         };
+        let center_x = rect.x() + rect.width() as i32 / 2 - adjust_x;
 
         if digits.len() > 2 {
-            // self.font_time.find_glyph_metrics(ch: char)
-        } else {
+            let glyph_metrics = self
+                .font_time
+                .find_glyph_metrics(digits[0] as char)
+                .unwrap();
+            let glyph = self
+                .font_time
+                .render(&digits[0].to_string())
+                .blended(color)
+                .unwrap();
+            let coords = Rect::new(
+                center_x - glyph_metrics.maxx + glyph_metrics.minx
+                    - spc
+                    - (if adjust_x > 0 { spc } else { 0 }),
+                rect.y() + (rect.height() as i32 - glyph.height() as i32) / 2,
+                0,
+                0,
+            );
+            glyph.blit(None, surface, coords);
 
+            let glyph_metrics = self
+                .font_time
+                .find_glyph_metrics(digits[1] as char)
+                .unwrap();
+            let glyph = self
+                .font_time
+                .render(&digits[1].to_string())
+                .blended(color)
+                .unwrap();
+            let coords = Rect::new(
+                center_x + spc / 2,
+                rect.y() + (rect.height() as i32 - glyph.height() as i32) / 2,
+                0,
+                0,
+            );
+            glyph.blit(None, surface, coords);
+        } else {
+            let glyph = self
+                .font_time
+                .render(&digits[0].to_string())
+                .blended(color)
+                .unwrap();
+            let coords = Rect::new(
+                center_x - glyph.width() as i32 / 2,
+                rect.y() + (rect.height() as i32 - glyph.height() as i32) / 2,
+                0,
+                0,
+            );
+            glyph.blit(None, surface, coords);
         }
     }
 
@@ -213,7 +266,7 @@ impl<'a> ScreenSaver<'a> {
         maxsteps: i32,
         step: i32,
     ) {
-        let spc = surface.height();
+        let spc = surface.height() as i32;
 
         let rect = Rect::new(
             background.x(),
@@ -223,13 +276,15 @@ impl<'a> ScreenSaver<'a> {
         );
         surface.set_clip_rect(rect);
         self.bg.blit(None, surface, rect);
-        // self.blit_digits();
+        self.blit_digits(surface, rect, spc, digits.as_bytes(), FONT_COLOR);
         surface.set_clip_rect(None);
     }
 
     fn render_clock(&mut self, maxsteps: i32, step: i32) {
         let mut buffer = String::with_capacity(3);
         let mut buffer2 = String::with_capacity(3);
+        // let mut buffer: Vec<u8> = Vec::with_capacity(3);
+        // let mut buffer2: Vec<u8> = Vec::with_capacity(3);
 
         let tm = time::now();
         let mut screen = self.window.surface(&self.event_pump).unwrap();
@@ -249,7 +304,14 @@ impl<'a> ScreenSaver<'a> {
                 write!(buffer2, "{}", self.past_h);
             }
 
-            self.render_digits(&mut screen, &self.hour_background, &buffer, &buffer2, maxsteps, step);
+            self.render_digits(
+                &mut screen,
+                &self.hour_background,
+                &buffer,
+                &buffer2,
+                maxsteps,
+                step,
+            );
             if self.opt.ampm {
                 self.render_ampm(&mut screen, &self.hour_background, tm.tm_hour >= 12);
             }
