@@ -6,7 +6,8 @@ use sdl2::surface::{Surface, SurfaceRef};
 // use std::time::{Duration, Instant};
 // use time;
 use sdl2::{
-    ttf::Font, ttf::Sdl2TtfContext, video::Window, video::WindowSurfaceRef, EventPump, Sdl,
+    gfx::rotozoom::RotozoomSurface, ttf::Font, ttf::Sdl2TtfContext, video::Window,
+    video::WindowSurfaceRef, EventPump, Sdl,
 };
 use std::fmt::Write;
 use structopt::StructOpt;
@@ -59,7 +60,7 @@ struct ScreenSaver<'a> {
     opt: &'a Opt,
     past_h: i32,
     past_m: i32,
-    radius: i32,
+    // radius: i32,
 }
 
 impl<'a> ScreenSaver<'a> {
@@ -137,7 +138,7 @@ impl<'a> ScreenSaver<'a> {
             opt,
             past_h: -1,
             past_m: -1,
-            radius,
+            // radius,
         }
     }
 
@@ -201,9 +202,11 @@ impl<'a> ScreenSaver<'a> {
         surface: &mut SurfaceRef,
         rect: Rect,
         spc: i32,
-        digits: &[u8],
+        digits: &str,
         color: Color,
     ) {
+        let digits = digits.as_bytes();
+
         let adjust_x = if digits[0] == b'1' {
             (2.5 * spc as f32) as i32
         } else {
@@ -282,8 +285,57 @@ impl<'a> ScreenSaver<'a> {
         );
         surface.set_clip_rect(rect);
         self.bg.blit(None, surface, rect);
-        self.blit_digits(surface, rect, spc, digits.as_bytes(), FONT_COLOR);
+        self.blit_digits(surface, rect, spc, digits, FONT_COLOR);
         surface.set_clip_rect(None);
+
+        let halfsteps = maxsteps / 2;
+        let upperhalf = (step + 1) <= halfsteps;
+        let scale = if upperhalf {
+            1.0 - step as f64 / (halfsteps as f64 - 1.)
+        } else {
+            (step as f64 - halfsteps as f64 + 1.) / halfsteps as f64
+        };
+
+        let c = if upperhalf {
+            0xb7 - 0xb7 * (step as f32 / (halfsteps as f32 - 1.)) as u8
+        } else {
+            0xb7 * ((step as f32 - halfsteps as f32 + 1.) / halfsteps as f32) as u8
+        };
+
+        let color = Color::RGB(c, c, c);
+
+        let mut bgcopy = self.bg.convert(&self.bg.pixel_format()).unwrap();
+
+        let rect = Rect::new(0, 0, bgcopy.width(), bgcopy.height());
+
+        self.blit_digits(
+            &mut bgcopy,
+            rect,
+            spc,
+            if upperhalf { prevdigits } else { digits },
+            color,
+        );
+
+        let scaled = bgcopy.zoom(1., scale, true).unwrap();
+        // rect.set_x(0);
+        // rect.set_y(if upperhalf {
+        //     0
+        // } else {
+        //     scaled.height() as i32 / 2
+        // });
+        // rect.set_width(scaled.width());
+        // rect.set_height(scaled.height() / 2);
+        let rect = Rect::new(
+            0,
+            if upperhalf {
+                0
+            } else {
+                scaled.height() as i32 / 2
+            },
+            scaled.width(),
+            scaled.height() / 2,
+        );
+        // let dstrect = Rect::new(background.x(), y: i32, width: u32, height: u32)
     }
 
     fn render_clock(&mut self, maxsteps: i32, step: i32) {

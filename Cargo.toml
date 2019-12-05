@@ -12,4 +12,4 @@ time = "0.1.42"
 
 [dependencies.sdl2]
 version = "0.32.2"
-features = ["ttf"]
+features = ["ttf", "gfx"]
