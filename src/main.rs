@@ -61,6 +61,7 @@ struct ScreenSaver<'a> {
     past_h: i32,
     past_m: i32,
     // radius: i32,
+    animate: bool,
 }
 
 impl<'a> ScreenSaver<'a> {
@@ -139,6 +140,7 @@ impl<'a> ScreenSaver<'a> {
             past_h: -1,
             past_m: -1,
             // radius,
+            animate: true,
         }
     }
 
@@ -186,10 +188,10 @@ impl<'a> ScreenSaver<'a> {
             rect.x() + (rect.height() as f32 * 0.07) as i32,
             rect.y()
                 + if pm {
-                    rect.height() as i32 - offset - ampm.height() as i32
-                } else {
-                    offset
-                },
+                rect.height() as i32 - offset - ampm.height() as i32
+            } else {
+                offset
+            },
             0,
             0,
         );
@@ -335,7 +337,35 @@ impl<'a> ScreenSaver<'a> {
             scaled.width(),
             scaled.height() / 2,
         );
-        // let dstrect = Rect::new(background.x(), y: i32, width: u32, height: u32)
+        let dstrect = Rect::new(
+            background.x(),
+            background.y()
+                + if upperhalf {
+                (background.height() as i32 - scaled.height() as i32) / 2
+            } else {
+                background.height() as i32 / 2
+            },
+            rect.width(),
+            rect.height(),
+        );
+        surface.set_clip_rect(dstrect);
+        scaled.blit(rect, surface, dstrect);
+        surface.set_clip_rect(None);
+
+        if !self.animate {
+            return;
+        }
+
+        let mut rect = Rect::new(
+            background.x(),
+            background.y() + (background.height() as i32 - rect.height() as i32) / 2,
+            (surface.height() as f32 * 0.005) as u32,
+            background.width(),
+        );
+        surface.fill_rect(rect, Color::RGB(0, 0, 0));
+        rect.set_y(rect.y() + rect.height() as i32);
+        rect.set_height(1);
+        surface.fill_rect(rect, Color::RGB(0x1a, 0x1a, 0x1a));
     }
 
     fn render_clock(&mut self, maxsteps: i32, step: i32) {
@@ -375,7 +405,18 @@ impl<'a> ScreenSaver<'a> {
             }
         }
 
+        if tm.tm_min != self.past_m {
+            write!(buffer, "{:02}", tm.tm_min);
+            write!(buffer2, "{:02}", self.past_m);
+            self.render_digits(&mut screen, &self.min_background, &buffer, &buffer2, maxsteps, step);
+        }
+
         screen.finish().unwrap();
+
+        if step == maxsteps - 1 {
+            self.past_h = tm.tm_hour;
+            self.past_m = tm.tm_min;
+        }
     }
 
     fn render_animation(&mut self) {}
