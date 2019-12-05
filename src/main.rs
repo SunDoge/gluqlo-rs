@@ -59,6 +59,7 @@ struct ScreenSaver<'a> {
     opt: &'a Opt,
     past_h: i32,
     past_m: i32,
+    radius: i32,
 }
 
 impl<'a> ScreenSaver<'a> {
@@ -136,6 +137,7 @@ impl<'a> ScreenSaver<'a> {
             opt,
             past_h: -1,
             past_m: -1,
+            radius,
         }
     }
 
@@ -164,6 +166,10 @@ impl<'a> ScreenSaver<'a> {
             // let mut screen = self.window.surface(&self.event_pump).unwrap();
             // screen.fill_rect(None, Color::RGB(0, 255, 255)).unwrap();
             // screen.finish().unwrap();
+
+            // fill_rounded_box_b(&mut self.bg, &self.bgrect, self.radius, BACKGROUND_COLOR);
+
+            // self.render_clock(20, 19);
         }
     }
 
