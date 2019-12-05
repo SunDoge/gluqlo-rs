@@ -60,7 +60,7 @@ struct ScreenSaver<'a> {
     opt: &'a Opt,
     past_h: i32,
     past_m: i32,
-    // radius: i32,
+    radius: i32,
     animate: bool,
     time_subsystem: TimerSubsystem,
     event_subsystem: EventSubsystem,
@@ -144,7 +144,7 @@ impl<'a> ScreenSaver<'a> {
             opt,
             past_h: -1,
             past_m: -1,
-            // radius,
+            radius,
             animate: true,
             time_subsystem,
             event_subsystem,
@@ -155,7 +155,7 @@ impl<'a> ScreenSaver<'a> {
         self.render_clock(20, 19);
         let past_m = self.past_m;
         let event_subsystem = &self.event_subsystem;
-        self.time_subsystem.add_timer(60, Box::new(move || {
+        let _ = self.time_subsystem.add_timer(60, Box::new(move || {
             let time_i = time::now();
 
             let interval = if time_i.tm_min != past_m {
@@ -200,7 +200,9 @@ impl<'a> ScreenSaver<'a> {
 
             // fill_rounded_box_b(&mut self.bg, &self.bgrect, self.radius, BACKGROUND_COLOR);
 
-            // self.render_clock(20, 19);
+            self.render_clock(20, 19);
+            fill_rounded_box_b(&mut self.bg, &self.bgrect, self.radius, BACKGROUND_COLOR);
+            std::thread::sleep(std::time::Duration::from_secs(1));
         }
     }
 
@@ -413,11 +415,11 @@ impl<'a> ScreenSaver<'a> {
             };
 
             if self.opt.leadingzero {
-                write!(buffer, "{:02}", h);
-                write!(buffer2, "{:02}", self.past_h);
+                write!(buffer, "{:02}", h).unwrap();
+                write!(buffer2, "{:02}", self.past_h).unwrap();
             } else {
-                write!(buffer, "{}", h);
-                write!(buffer2, "{}", self.past_h);
+                write!(buffer, "{}", h).unwrap();
+                write!(buffer2, "{}", self.past_h).unwrap();
             }
 
             self.render_digits(
@@ -434,8 +436,8 @@ impl<'a> ScreenSaver<'a> {
         }
 
         if tm.tm_min != self.past_m {
-            write!(buffer, "{:02}", tm.tm_min);
-            write!(buffer2, "{:02}", self.past_m);
+            write!(buffer, "{:02}", tm.tm_min).unwrap();
+            write!(buffer2, "{:02}", self.past_m).unwrap();
             self.render_digits(&mut screen, &self.min_background, &buffer, &buffer2, maxsteps, step);
         }
 
