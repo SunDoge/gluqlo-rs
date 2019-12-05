@@ -5,7 +5,9 @@ use sdl2::rect::Rect;
 use sdl2::surface::{Surface, SurfaceRef};
 // use std::time::{Duration, Instant};
 // use time;
-use sdl2::{ttf::Sdl2TtfContext, video::Window, EventPump, Sdl, ttf::Font, video::WindowSurfaceRef};
+use sdl2::{
+    ttf::Font, ttf::Sdl2TtfContext, video::Window, video::WindowSurfaceRef, EventPump, Sdl,
+};
 use std::fmt::Write;
 use structopt::StructOpt;
 
@@ -41,7 +43,7 @@ struct Opt {
     #[structopt(long = "ampm")]
     ampm: bool,
 
-    #[structopt(long="leardingzero")]
+    #[structopt(long = "leardingzero")]
     leadingzero: bool,
 }
 
@@ -60,7 +62,11 @@ struct ScreenSaver<'a> {
 }
 
 impl<'a> ScreenSaver<'a> {
-    pub fn new(sdl_context: &Sdl, ttf_context: &'a Sdl2TtfContext,opt: &'a Opt) -> ScreenSaver<'a> {
+    pub fn new(
+        sdl_context: &Sdl,
+        ttf_context: &'a Sdl2TtfContext,
+        opt: &'a Opt,
+    ) -> ScreenSaver<'a> {
         let mut width = opt.width;
         let mut height = opt.height;
         let video_subsystem = sdl_context.video().unwrap();
@@ -141,7 +147,7 @@ impl<'a> ScreenSaver<'a> {
 
             for event in self.event_pump.poll_iter() {
                 match event {
-                    Event::User {..} => receive_user_event = true,
+                    Event::User { .. } => receive_user_event = true,
                     Event::Quit { .. } => break 'running,
                     Event::KeyDown { keycode, .. } => match keycode {
                         Some(Keycode::Escape) | Some(Keycode::Q) => break 'running,
@@ -161,29 +167,65 @@ impl<'a> ScreenSaver<'a> {
         }
     }
 
-    fn fill_rounded_box_b(&mut self) {}
+    // fn fill_rounded_box_b(&mut self) {}
 
     fn render_ampm(&self, surface: &mut SurfaceRef, rect: &Rect, pm: bool) {
-        let mode = format!(
-            "{}M", if pm {"P"} else {"A"}
-        );
+        let mode = format!("{}M", if pm { "P" } else { "A" });
 
         let ampm = self.font_mode.render(&mode).blended(FONT_COLOR).unwrap();
 
         let offset = (rect.height() as f32 * 0.127) as i32;
         let coords = Rect::new(
-            rect.x() + (rect.height() as f32 * 0.07) as i32, 
-            rect.y() + if pm {rect.height() as i32 -offset - ampm.height() as i32} else {offset}, 
-            0, 
-            0);
-        
+            rect.x() + (rect.height() as f32 * 0.07) as i32,
+            rect.y()
+                + if pm {
+                    rect.height() as i32 - offset - ampm.height() as i32
+                } else {
+                    offset
+                },
+            0,
+            0,
+        );
         // surface.blit(src_rect: R1, dst: &mut SurfaceRef, dst_rect: R2)
         ampm.blit(None, surface, coords);
     }
 
-    fn blit_digits(&mut self) {}
+    fn blit_digits(&self, surface: &mut SurfaceRef, rect: &Rect, spc: i32, digits: &str, color: Color) {
+        let adjust_x = if digits.starts_with("1") {
+            (2.5 * spc as f32) as i32
+        } else {
+            0
+        };
 
-    fn render_digits(&mut self) {}
+        if digits.len() > 2 {
+            // self.font_time.find_glyph_metrics(ch: char)
+        } else {
+
+        }
+    }
+
+    fn render_digits(
+        &self,
+        surface: &mut SurfaceRef,
+        background: &Rect,
+        digits: &str,
+        prevdigits: &str,
+        maxsteps: i32,
+        step: i32,
+    ) {
+        let spc = surface.height();
+
+        let rect = Rect::new(
+            background.x(),
+            background.y(),
+            background.width(),
+            background.height() / 2,
+        );
+        surface.set_clip_rect(rect);
+        self.bg.blit(None, surface, rect);
+        // self.blit_digits();
+        surface.set_clip_rect(None);
+    }
 
     fn render_clock(&mut self, maxsteps: i32, step: i32) {
         let mut buffer = String::with_capacity(3);
@@ -207,6 +249,7 @@ impl<'a> ScreenSaver<'a> {
                 write!(buffer2, "{}", self.past_h);
             }
 
+            self.render_digits(&mut screen, &self.hour_background, &buffer, &buffer2, maxsteps, step);
             if self.opt.ampm {
                 self.render_ampm(&mut screen, &self.hour_background, tm.tm_hour >= 12);
             }
@@ -228,7 +271,7 @@ fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let ttf_context = sdl2::ttf::init().unwrap();
 
-    let mut screen_saver = ScreenSaver::new(&sdl_context, &ttf_context,&opt);
+    let mut screen_saver = ScreenSaver::new(&sdl_context, &ttf_context, &opt);
 
     screen_saver.run();
 
