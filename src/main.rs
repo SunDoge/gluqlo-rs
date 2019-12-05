@@ -1,4 +1,4 @@
-use sdl2::event::Event;
+use sdl2::event::{Event, EventType};
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::{Color, PixelFormatEnum};
 use sdl2::rect::Rect;
@@ -7,7 +7,7 @@ use sdl2::surface::{Surface, SurfaceRef};
 // use time;
 use sdl2::{
     gfx::rotozoom::RotozoomSurface, ttf::Font, ttf::Sdl2TtfContext, video::Window,
-    video::WindowSurfaceRef, EventPump, Sdl,
+    video::WindowSurfaceRef, EventPump, Sdl, TimerSubsystem, EventSubsystem,
 };
 use std::fmt::Write;
 use structopt::StructOpt;
@@ -62,6 +62,8 @@ struct ScreenSaver<'a> {
     past_m: i32,
     // radius: i32,
     animate: bool,
+    time_subsystem: TimerSubsystem,
+    event_subsystem: EventSubsystem,
 }
 
 impl<'a> ScreenSaver<'a> {
@@ -91,7 +93,7 @@ impl<'a> ScreenSaver<'a> {
             .unwrap();
 
         let mut screen = window.surface(&event_pump).unwrap();
-        screen.fill_rect(None, Color::RGB(0, 255, 255)).unwrap();
+        screen.fill_rect(None, Color::RGB(0, 0, 0)).unwrap();
         screen.finish().unwrap();
 
         let rectsize = (height as f32 * 0.6) as u32;
@@ -127,6 +129,9 @@ impl<'a> ScreenSaver<'a> {
         let mut bg = Surface::new(rectsize, rectsize, PixelFormatEnum::RGBA32).unwrap();
         fill_rounded_box_b(&mut bg, &bgrect, radius, BACKGROUND_COLOR);
 
+        let time_subsystem = sdl_context.timer().unwrap();
+        let event_subsystem = sdl_context.event().unwrap();
+
         ScreenSaver {
             window,
             event_pump,
@@ -141,11 +146,34 @@ impl<'a> ScreenSaver<'a> {
             past_m: -1,
             // radius,
             animate: true,
+            time_subsystem,
+            event_subsystem,
         }
     }
 
     pub fn run(&mut self) {
         self.render_clock(20, 19);
+        let past_m = self.past_m;
+        let event_subsystem = &self.event_subsystem;
+        self.time_subsystem.add_timer(60, Box::new(move || {
+            let time_i = time::now();
+
+            let interval = if time_i.tm_min != past_m {
+                let e = Event::User {
+                    type_: EventType::User as u32,
+                    code: 0,
+                    data1: std::ptr::null_mut(),
+                    data2: std::ptr::null_mut(),
+                    window_id: 0,
+                    timestamp: 0,
+                };
+                event_subsystem.push_event(e);
+                (1000 * (60 - time_i.tm_sec) - 250) as u32
+            } else {
+                250
+            };
+            interval
+        }));
 
         'running: loop {
             let mut receive_user_event = false;
@@ -419,9 +447,47 @@ impl<'a> ScreenSaver<'a> {
         }
     }
 
-    fn render_animation(&mut self) {}
+    fn render_animation(&mut self) {
+        if !self.animate {
+            self.render_clock(20, 19);
+            return;
+        }
 
-    fn update_time(&mut self) {}
+        const DURATION: u32 = 260;
+        let start_tick = self.time_subsystem.ticks();
+        let end_tick = start_tick + DURATION;
+
+        let mut done = false;
+        while !done {
+            let mut current_tick = self.time_subsystem.ticks();
+            if current_tick >= end_tick {
+                done = true;
+                current_tick = end_tick;
+            }
+            let frame = 99 * (current_tick - start_tick) / (end_tick - start_tick);
+            self.render_clock(100, frame as i32);
+        }
+    }
+
+    fn update_time(&mut self) -> u32 {
+        let time_i = time::now();
+
+        let interval = if time_i.tm_min != self.past_m {
+//            let e = Event::User {
+//                timestamp: 0,
+//                code: 0,
+//                data1: std::ptr::null_mut(),
+//                data2: std::ptr::null_mut(),
+//                type_: EventType::User as u32,
+//            };
+//            let e = Event::User::default();
+
+            (1000 * (60 - time_i.tm_sec) - 250) as u32
+        } else {
+            250
+        };
+        interval
+    }
 }
 
 fn main() -> Result<(), String> {
@@ -512,3 +578,5 @@ fn fill_rounded_box_b(dst: &mut SurfaceRef, coords: &Rect, r: i32, color: Color)
         }
     });
 }
+
+
