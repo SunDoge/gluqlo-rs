@@ -11,7 +11,8 @@ use sdl2::{
 };
 use std::fmt::Write;
 use structopt::StructOpt;
-use std::sync::atomic::{AtomicI32, Ordering};
+use std::sync::atomic::{AtomicIsize, Ordering};
+// use std::cell::RefCell;
 
 const FONT: &'static str = "gluqlo.ttf";
 const TITLE: &'static str = "Gluqlo 1.1";
@@ -29,6 +30,10 @@ const BACKGROUND_COLOR: Color = Color {
     b: 0x0f,
     a: DEFAULT_A,
 };
+
+static PAST_H: AtomicIsize = AtomicIsize::new(-1);
+static PAST_M: AtomicIsize = AtomicIsize::new(-1);
+
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "basic")]
@@ -59,8 +64,8 @@ struct ScreenSaver<'a> {
     font_time: Font<'a, 'a>,
     font_mode: Font<'a, 'a>,
     opt: &'a Opt,
-    past_h: i32,
-    past_m: i32,
+    // past_h: RefCell<i32>,
+    // past_m: RefCell<i32>,
     //    radius: i32,
     animate: bool,
     time_subsystem: TimerSubsystem,
@@ -143,8 +148,8 @@ impl<'a> ScreenSaver<'a> {
             font_time,
             font_mode,
             opt,
-            past_h: -1,
-            past_m: -1,
+            // past_h: RefCell::new(-1),
+            // past_m: RefCell::new(-1),
 //            radius,
             animate: true,
             time_subsystem,
@@ -154,12 +159,12 @@ impl<'a> ScreenSaver<'a> {
 
     pub fn run(&mut self) {
         self.render_clock(20, 19);
-        let past_m = self.past_m;
+        
         let event_subsystem = &self.event_subsystem;
         let _ = self.time_subsystem.add_timer(60, Box::new(move || {
             let time_i = time::now();
 
-            let interval = if time_i.tm_min != past_m {
+            let interval = if time_i.tm_min != PAST_M.load(Ordering::Relaxed) as i32 {
                 let e = Event::User {
                     type_: EventType::User as u32,
                     code: 0,
@@ -407,18 +412,29 @@ impl<'a> ScreenSaver<'a> {
         let tm = time::now();
         let mut screen = self.window.surface(&self.event_pump).unwrap();
 
-        if tm.tm_hour != self.past_h {
+        if tm.tm_hour != PAST_H.load(Ordering::Relaxed) as i32 {
             let h = if self.opt.ampm {
                 (tm.tm_hour + 11) % 12 + 1
             } else {
                 tm.tm_hour
             };
+            
+            
+            // let (buffer, buffer2) = if self.opt.leadingzero {
+            //     (format!("{:02}", h), format!("{:02}", self.past_h))
+            // } else {
+            //     (format!("{}", h), format!("{}", self.past_h))
+            // };
+            let mut buffer = String::with_capacity(2);
+            let mut buffer2 = String::with_capacity(2);
 
-            let (buffer, buffer2) = if self.opt.leadingzero {
-                (format!("{:02}", h), format!("{:02}", self.past_h))
-            } else {
-                (format!("{}", h), format!("{}", self.past_h))
-            };
+            if self.opt.leadingzero {
+                write!(&mut buffer, "{:02}", h);
+                write!(&mut buffer2, "{:02}", PAST_H.load(Ordering::Relaxed));
+            }else {
+                write!(&mut buffer, "{}", h);
+                write!(&mut buffer2, "{}", PAST_H.load(Ordering::Relaxed));
+            }
 
             self.render_digits(
                 &mut screen,
@@ -436,9 +452,9 @@ impl<'a> ScreenSaver<'a> {
             println!("buffer2: {}", buffer2);
         }
 
-        if tm.tm_min != self.past_m {
+        if tm.tm_min != PAST_M.load(Ordering::Relaxed) as i32 {
             let buffer = format!("{:02}", tm.tm_min);
-            let buffer2 = format!("{:02}", self.past_m);
+            let buffer2 = format!("{:02}", PAST_M.load(Ordering::Relaxed));
             self.render_digits(&mut screen, self.min_background, &buffer, &buffer2, maxsteps, step);
 
             println!("buffer: {}", buffer);
@@ -450,8 +466,8 @@ impl<'a> ScreenSaver<'a> {
         screen.finish().unwrap();
 
         if step == maxsteps - 1 {
-            self.past_h = tm.tm_hour;
-            self.past_m = tm.tm_min;
+            PAST_H.store(tm.tm_hour as isize, Ordering::Relaxed);
+            PAST_M.store(tm.tm_min as isize, Ordering::Relaxed);
         }
     }
 
@@ -461,19 +477,19 @@ impl<'a> ScreenSaver<'a> {
             return;
         }
 
-        let duration = time::Duration::milliseconds(260);
+        let duration = ::std::time::Duration::from_millis(260);
 //        let start_tick = self.time_subsystem.ticks();
-        let start_tick = time::now();
+        let start_tick = ::std::time::Instant::now();
         let end_tick = start_tick + duration;
 
         let mut done = false;
         while !done {
-            let mut current_tick = time::now();
+            let mut current_tick = ::std::time::Instant::now();
             if current_tick >= end_tick {
                 done = true;
                 current_tick = end_tick;
             }
-            let frame = 99 * (current_tick - start_tick) / (end_tick - start_tick);
+            let frame = 99 * (current_tick - start_tick).as_millis() / (end_tick - start_tick).as_millis();
             self.render_clock(100, frame as i32);
         }
     }
