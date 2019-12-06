@@ -161,7 +161,7 @@ impl<'a> ScreenSaver<'a> {
         self.render_clock(20, 19);
         
         let event_subsystem = &self.event_subsystem;
-        let _ = self.time_subsystem.add_timer(60, Box::new(move || {
+        let _timer = self.time_subsystem.add_timer(60, Box::new(move || {
             let time_i = time::now();
 
             let interval = if time_i.tm_min != PAST_M.load(Ordering::Relaxed) as i32 {
@@ -313,7 +313,7 @@ impl<'a> ScreenSaver<'a> {
     ) {
         let spc = (surface.height() as f32 * 0.0125) as i32;
 
-        let rect = Rect::new(
+        let mut rect = Rect::new(
             background.x(),
             background.y(),
             background.width(),
@@ -342,7 +342,11 @@ impl<'a> ScreenSaver<'a> {
 
         let mut bgcopy = self.bg.convert(&self.bg.pixel_format()).unwrap();
 
-        let rect = Rect::new(0, 0, bgcopy.width(), bgcopy.height());
+        // let rect = Rect::new(0, 0, bgcopy.width(), bgcopy.height());
+        rect.set_x(0);
+        rect.set_y(0);
+        rect.set_width(bgcopy.width());
+        rect.set_height(bgcopy.height());
 
         self.blit_digits(
             &mut bgcopy,
@@ -353,24 +357,24 @@ impl<'a> ScreenSaver<'a> {
         );
 
         let scaled = bgcopy.zoom(1., scale, true).unwrap();
-        // rect.set_x(0);
-        // rect.set_y(if upperhalf {
-        //     0
-        // } else {
-        //     scaled.height() as i32 / 2
-        // });
-        // rect.set_width(scaled.width());
-        // rect.set_height(scaled.height() / 2);
-        let rect = Rect::new(
-            0,
-            if upperhalf {
-                0
-            } else {
-                scaled.height() as i32 / 2
-            },
-            scaled.width(),
-            scaled.height() / 2,
-        );
+        rect.set_x(0);
+        rect.set_y(if upperhalf {
+            0
+        } else {
+            scaled.height() as i32 / 2
+        });
+        rect.set_width(scaled.width());
+        rect.set_height(scaled.height() / 2);
+        // let rect = Rect::new(
+        //     0,
+        //     if upperhalf {
+        //         0
+        //     } else {
+        //         scaled.height() as i32 / 2
+        //     },
+        //     scaled.width(),
+        //     scaled.height() / 2,
+        // );
         let dstrect = Rect::new(
             background.x(),
             background.y()
@@ -391,12 +395,17 @@ impl<'a> ScreenSaver<'a> {
         }
 
         // Draw divider
-        let mut rect = Rect::new(
-            background.x(),
-            background.y() + (background.height() as i32 - rect.height() as i32) / 2,
-            background.width(),
-            (surface.height() as f32 * 0.005) as u32,
-        );
+        // let mut rect = Rect::new(
+        //     background.x(),
+        //     background.y() + (background.height() as i32 - rect.height() as i32) / 2,
+        //     background.width(),
+        //     (surface.height() as f32 * 0.005) as u32,
+        // );
+        rect.set_height((surface.height() as f32 * 0.005) as u32 );
+        rect.set_width(background.width());
+        rect.set_x(background.x());
+        rect.set_y(background.y() + (background.height() as i32 - rect.height() as i32) / 2);
+
         surface.fill_rect(rect, Color::RGB(0, 0, 0));
         rect.set_y(rect.y() + rect.height() as i32);
         rect.set_height(1);
