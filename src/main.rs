@@ -152,7 +152,7 @@ impl<'a> ScreenSaver<'a> {
     }
 
     pub fn run(&mut self) {
-//        self.render_clock(20, 19);
+        self.render_clock(20, 19);
         let past_m = self.past_m;
         let event_subsystem = &self.event_subsystem;
         let _ = self.time_subsystem.add_timer(60, Box::new(move || {
@@ -237,23 +237,21 @@ impl<'a> ScreenSaver<'a> {
         digits: &str,
         color: Color,
     ) {
-        let digits = digits.as_bytes();
-
-        let adjust_x = if digits[0] == b'1' {
+        let adjust_x = if digits.starts_with("1") {
             (2.5 * spc as f32) as i32
         } else {
             0
         };
         let center_x = rect.x() + rect.width() as i32 / 2 - adjust_x;
 
-        if digits.len() > 2 {
+        if digits.len() > 1 {
             let glyph_metrics = self
                 .font_time
-                .find_glyph_metrics(digits[0] as char)
+                .find_glyph_metrics(digits.chars().nth(0).unwrap())
                 .unwrap();
             let glyph = self
                 .font_time
-                .render(&digits[0].to_string())
+                .render(&digits[0..1])
                 .blended(color)
                 .unwrap();
             let coords = Rect::new(
@@ -268,11 +266,11 @@ impl<'a> ScreenSaver<'a> {
 
             let glyph_metrics = self
                 .font_time
-                .find_glyph_metrics(digits[1] as char)
+                .find_glyph_metrics(digits.chars().nth(1).unwrap())
                 .unwrap();
             let glyph = self
                 .font_time
-                .render(&digits[1].to_string())
+                .render(&digits[1..2])
                 .blended(color)
                 .unwrap();
             let coords = Rect::new(
@@ -285,7 +283,7 @@ impl<'a> ScreenSaver<'a> {
         } else {
             let glyph = self
                 .font_time
-                .render(&digits[0].to_string())
+                .render(&digits[0..1])
                 .blended(color)
                 .unwrap();
             let coords = Rect::new(
@@ -301,13 +299,13 @@ impl<'a> ScreenSaver<'a> {
     fn render_digits(
         &self,
         surface: &mut SurfaceRef,
-        background: &Rect,
+        background: Rect,
         digits: &str,
         prevdigits: &str,
         maxsteps: i32,
         step: i32,
     ) {
-        let spc = surface.height() as i32;
+        let spc = (surface.height() as f32 * 0.0125) as i32;
 
         let rect = Rect::new(
             background.x(),
@@ -317,7 +315,7 @@ impl<'a> ScreenSaver<'a> {
         );
         surface.set_clip_rect(rect);
         self.bg.blit(None, surface, rect);
-        self.blit_digits(surface, rect, spc, digits, FONT_COLOR);
+        self.blit_digits(surface, background, spc, digits, FONT_COLOR);
         surface.set_clip_rect(None);
 
         let halfsteps = maxsteps / 2;
@@ -386,11 +384,12 @@ impl<'a> ScreenSaver<'a> {
             return;
         }
 
+        // Draw divider
         let mut rect = Rect::new(
             background.x(),
             background.y() + (background.height() as i32 - rect.height() as i32) / 2,
-            (surface.height() as f32 * 0.005) as u32,
             background.width(),
+            (surface.height() as f32 * 0.005) as u32,
         );
         surface.fill_rect(rect, Color::RGB(0, 0, 0));
         rect.set_y(rect.y() + rect.height() as i32);
@@ -399,8 +398,8 @@ impl<'a> ScreenSaver<'a> {
     }
 
     fn render_clock(&mut self, maxsteps: i32, step: i32) {
-        let mut buffer = String::with_capacity(3);
-        let mut buffer2 = String::with_capacity(3);
+//        let mut buffer = String::with_capacity(2);
+//        let mut buffer2 = String::with_capacity(2);
         // let mut buffer: Vec<u8> = Vec::with_capacity(3);
         // let mut buffer2: Vec<u8> = Vec::with_capacity(3);
 
@@ -414,17 +413,15 @@ impl<'a> ScreenSaver<'a> {
                 tm.tm_hour
             };
 
-            if self.opt.leadingzero {
-                write!(buffer, "{:02}", h).unwrap();
-                write!(buffer2, "{:02}", self.past_h).unwrap();
+            let (buffer, buffer2) = if self.opt.leadingzero {
+                (format!("{:02}", h), format!("{:02}", self.past_h))
             } else {
-                write!(buffer, "{}", h).unwrap();
-                write!(buffer2, "{}", self.past_h).unwrap();
-            }
+                (format!("{}", h), format!("{}", self.past_h))
+            };
 
             self.render_digits(
                 &mut screen,
-                &self.hour_background,
+                self.hour_background,
                 &buffer,
                 &buffer2,
                 maxsteps,
@@ -433,13 +430,21 @@ impl<'a> ScreenSaver<'a> {
             if self.opt.ampm {
                 self.render_ampm(&mut screen, &self.hour_background, tm.tm_hour >= 12);
             }
+
+            println!("buffer: {}", buffer);
+            println!("buffer2: {}", buffer2);
         }
 
         if tm.tm_min != self.past_m {
-            write!(buffer, "{:02}", tm.tm_min).unwrap();
-            write!(buffer2, "{:02}", self.past_m).unwrap();
-            self.render_digits(&mut screen, &self.min_background, &buffer, &buffer2, maxsteps, step);
+            let buffer = format!("{:02}", tm.tm_min);
+            let buffer2 = format!("{:02}", self.past_m);
+            self.render_digits(&mut screen, self.min_background, &buffer, &buffer2, maxsteps, step);
+
+            println!("buffer: {}", buffer);
+            println!("buffer2: {}", buffer2);
         }
+
+//        println!("tm: {:#?}", tm);
 
         screen.finish().unwrap();
 
