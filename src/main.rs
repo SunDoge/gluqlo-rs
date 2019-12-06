@@ -60,7 +60,7 @@ struct ScreenSaver<'a> {
     opt: &'a Opt,
     past_h: i32,
     past_m: i32,
-    radius: i32,
+    //    radius: i32,
     animate: bool,
     time_subsystem: TimerSubsystem,
     event_subsystem: EventSubsystem,
@@ -144,7 +144,7 @@ impl<'a> ScreenSaver<'a> {
             opt,
             past_h: -1,
             past_m: -1,
-            radius,
+//            radius,
             animate: true,
             time_subsystem,
             event_subsystem,
@@ -152,7 +152,7 @@ impl<'a> ScreenSaver<'a> {
     }
 
     pub fn run(&mut self) {
-        self.render_clock(20, 19);
+//        self.render_clock(20, 19);
         let past_m = self.past_m;
         let event_subsystem = &self.event_subsystem;
         let _ = self.time_subsystem.add_timer(60, Box::new(move || {
@@ -167,7 +167,7 @@ impl<'a> ScreenSaver<'a> {
                     window_id: 0,
                     timestamp: 0,
                 };
-                event_subsystem.push_event(e);
+                event_subsystem.push_event(e).unwrap();
                 (1000 * (60 - time_i.tm_sec) - 250) as u32
             } else {
                 250
@@ -195,13 +195,13 @@ impl<'a> ScreenSaver<'a> {
             }
 
             // let mut screen = self.window.surface(&self.event_pump).unwrap();
-            // screen.fill_rect(None, Color::RGB(0, 255, 255)).unwrap();
+            // screen.fill_rect(None, Color::RGB(0, 0, 0)).unwrap();
             // screen.finish().unwrap();
 
             // fill_rounded_box_b(&mut self.bg, &self.bgrect, self.radius, BACKGROUND_COLOR);
 
             self.render_clock(20, 19);
-            fill_rounded_box_b(&mut self.bg, &self.bgrect, self.radius, BACKGROUND_COLOR);
+            // fill_rounded_box_b(&mut self.bg, &self.bgrect, self.radius, BACKGROUND_COLOR);
             std::thread::sleep(std::time::Duration::from_secs(1));
         }
     }
@@ -471,25 +471,25 @@ impl<'a> ScreenSaver<'a> {
         }
     }
 
-    fn update_time(&mut self) -> u32 {
-        let time_i = time::now();
+//     fn update_time(&mut self) -> u32 {
+//         let time_i = time::now();
 
-        let interval = if time_i.tm_min != self.past_m {
-//            let e = Event::User {
-//                timestamp: 0,
-//                code: 0,
-//                data1: std::ptr::null_mut(),
-//                data2: std::ptr::null_mut(),
-//                type_: EventType::User as u32,
-//            };
-//            let e = Event::User::default();
+//         let interval = if time_i.tm_min != self.past_m {
+// //            let e = Event::User {
+// //                timestamp: 0,
+// //                code: 0,
+// //                data1: std::ptr::null_mut(),
+// //                data2: std::ptr::null_mut(),
+// //                type_: EventType::User as u32,
+// //            };
+// //            let e = Event::User::default();
 
-            (1000 * (60 - time_i.tm_sec) - 250) as u32
-        } else {
-            250
-        };
-        interval
-    }
+//             (1000 * (60 - time_i.tm_sec) - 250) as u32
+//         } else {
+//             250
+//         };
+//         interval
+//     }
 }
 
 fn main() -> Result<(), String> {
@@ -516,8 +516,7 @@ fn set_pixels(pixels: &mut [u8], index: i32, pixcolor: u32) {
 fn fill_rounded_box_b(dst: &mut SurfaceRef, coords: &Rect, r: i32, color: Color) {
     let pixcolor = color.to_u32(&dst.pixel_format());
     let rpsqrt2 = (r as f64 / 2.0_f64.sqrt()) as i32;
-    let yd: i32 =
-        (dst.pitch() as f32 / dst.pixel_format_enum().byte_size_per_pixel() as f32) as i32;
+    let yd: i32 = dst.pitch() as i32 / dst.pixel_format_enum().byte_size_per_pixel() as i32;
     let mut w: i32 = coords.width() as i32 / 2 - 1;
     let mut h: i32 = coords.height() as i32 / 2 - 1;
     let xo = coords.x() + w as i32;
@@ -531,6 +530,10 @@ fn fill_rounded_box_b(dst: &mut SurfaceRef, coords: &Rect, r: i32, color: Color)
     }
 
     dst.with_lock_mut(|pixels| {
+        let (_prefix, pixels, _suffix) = unsafe {
+            pixels.align_to_mut::<u32>()
+        };
+
         let sy: i32 = (yo - h) * yd;
         let ey: i32 = (yo + h) * yd;
         let sx: i32 = xo - w;
@@ -545,7 +548,8 @@ fn fill_rounded_box_b(dst: &mut SurfaceRef, coords: &Rect, r: i32, color: Color)
                 // pixels[index + 3] = color.a;
 
                 // 如果我没理解错，就是一次赋4个值
-                set_pixels(pixels, i + j, pixcolor);
+//                set_pixels(pixels, i + j, pixcolor);
+                pixels[(i + j) as usize] = pixcolor;
             }
         }
 
@@ -563,19 +567,24 @@ fn fill_rounded_box_b(dst: &mut SurfaceRef, coords: &Rect, r: i32, color: Color)
             }
 
             for i in (sx - x)..=(ex + x) {
-                set_pixels(pixels, sy - y * yd + i, pixcolor);
+//                set_pixels(pixels, , pixcolor);
+                pixels[(sy - y * yd + i) as usize] = pixcolor;
+            }
+
+
+            for i in (sx - y)..=(ex + y) {
+//                set_pixels(pixels, sy - x * yd + i, pixcolor);
+                pixels[(sy - x * yd + i) as usize] = pixcolor;
             }
 
             for i in (sx - y)..=(ex + y) {
-                set_pixels(pixels, sy - x * yd + i, pixcolor);
-            }
-
-            for i in (sx - y)..=(ex + y) {
-                set_pixels(pixels, ey + y * yd + i, pixcolor);
+//                set_pixels(pixels, ey + x * yd + i, pixcolor);
+                pixels[(ey + x * yd + i) as usize] = pixcolor;
             }
 
             for i in (sx - x)..=(ex + x) {
-                set_pixels(pixels, ey + x * yd + i, pixcolor);
+//                set_pixels(pixels, ey + y * yd + i, pixcolor);
+                pixels[(ey + y * yd + i) as usize] = pixcolor;
             }
         }
     });
