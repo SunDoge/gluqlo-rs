@@ -11,6 +11,7 @@ use sdl2::{
 };
 use std::fmt::Write;
 use structopt::StructOpt;
+use std::sync::atomic::{AtomicI32, Ordering};
 
 const FONT: &'static str = "gluqlo.ttf";
 const TITLE: &'static str = "Gluqlo 1.1";
@@ -397,7 +398,7 @@ impl<'a> ScreenSaver<'a> {
         surface.fill_rect(rect, Color::RGB(0x1a, 0x1a, 0x1a));
     }
 
-    fn render_clock(&mut self, maxsteps: i32, step: i32) {
+    fn render_clock(&self, maxsteps: i32, step: i32) {
 //        let mut buffer = String::with_capacity(2);
 //        let mut buffer2 = String::with_capacity(2);
         // let mut buffer: Vec<u8> = Vec::with_capacity(3);
@@ -454,19 +455,20 @@ impl<'a> ScreenSaver<'a> {
         }
     }
 
-    fn render_animation(&mut self) {
+    fn render_animation(&self) {
         if !self.animate {
             self.render_clock(20, 19);
             return;
         }
 
-        const DURATION: u32 = 260;
-        let start_tick = self.time_subsystem.ticks();
-        let end_tick = start_tick + DURATION;
+        let duration = time::Duration::milliseconds(260);
+//        let start_tick = self.time_subsystem.ticks();
+        let start_tick = time::now();
+        let end_tick = start_tick + duration;
 
         let mut done = false;
         while !done {
-            let mut current_tick = self.time_subsystem.ticks();
+            let mut current_tick = time::now();
             if current_tick >= end_tick {
                 done = true;
                 current_tick = end_tick;
