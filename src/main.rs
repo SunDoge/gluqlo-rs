@@ -174,6 +174,7 @@ impl<'a> ScreenSaver<'a> {
                     timestamp: 0,
                 };
                 event_subsystem.push_event(e).unwrap();
+                // println!("push event");
                 (1000 * (60 - time_i.tm_sec) - 250) as u32
             } else {
                 250
@@ -197,6 +198,7 @@ impl<'a> ScreenSaver<'a> {
             }
 
             if receive_user_event {
+                // println!("receive {}", receive_user_event);
                 self.render_animation();
             }
 
@@ -208,7 +210,7 @@ impl<'a> ScreenSaver<'a> {
 
             self.render_clock(20, 19);
             // fill_rounded_box_b(&mut self.bg, &self.bgrect, self.radius, BACKGROUND_COLOR);
-            std::thread::sleep(std::time::Duration::from_secs(1));
+            std::thread::sleep(std::time::Duration::from_millis(100));
         }
     }
 
@@ -457,8 +459,8 @@ impl<'a> ScreenSaver<'a> {
                 self.render_ampm(&mut screen, &self.hour_background, tm.tm_hour >= 12);
             }
 
-            println!("buffer: {}", buffer);
-            println!("buffer2: {}", buffer2);
+            // println!("buffer: {}", buffer);
+            // println!("buffer2: {}", buffer2);
         }
 
         if tm.tm_min != PAST_M.load(Ordering::Relaxed) as i32 {
@@ -466,8 +468,8 @@ impl<'a> ScreenSaver<'a> {
             let buffer2 = format!("{:02}", PAST_M.load(Ordering::Relaxed));
             self.render_digits(&mut screen, self.min_background, &buffer, &buffer2, maxsteps, step);
 
-            println!("buffer: {}", buffer);
-            println!("buffer2: {}", buffer2);
+            // println!("buffer: {}", buffer);
+            // println!("buffer2: {}", buffer2);
         }
 
 //        println!("tm: {:#?}", tm);
