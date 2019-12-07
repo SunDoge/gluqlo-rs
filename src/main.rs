@@ -6,12 +6,12 @@ use sdl2::surface::{Surface, SurfaceRef};
 // use std::time::{Duration, Instant};
 // use time;
 use sdl2::{
-    gfx::rotozoom::RotozoomSurface, ttf::Font, ttf::Sdl2TtfContext, video::Window,
-    EventPump, Sdl, TimerSubsystem, EventSubsystem, video::FullscreenType,
+    gfx::rotozoom::RotozoomSurface, ttf::Font, ttf::Sdl2TtfContext, video::FullscreenType,
+    video::Window, EventPump, EventSubsystem, Sdl, TimerSubsystem,
 };
 use std::fmt::Write;
-use structopt::StructOpt;
 use std::sync::atomic::{AtomicIsize, Ordering};
+use structopt::StructOpt;
 // use std::cell::RefCell;
 
 const FONT: &'static str = "gluqlo.ttf";
@@ -33,7 +33,6 @@ const BACKGROUND_COLOR: Color = Color {
 
 static PAST_H: AtomicIsize = AtomicIsize::new(-1);
 static PAST_M: AtomicIsize = AtomicIsize::new(-1);
-
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "basic")]
@@ -62,7 +61,7 @@ struct ScreenSaver<'a> {
     event_pump: EventPump,
     hour_background: Rect,
     min_background: Rect,
-    bgrect: Rect,
+    // bgrect: Rect,
     bg: Surface<'a>,
     font_time: Font<'a, 'a>,
     font_mode: Font<'a, 'a>,
@@ -85,9 +84,8 @@ impl<'a> ScreenSaver<'a> {
         let mut width = opt.width;
         let mut height = opt.height;
         let video_subsystem = sdl_context.video().unwrap();
-        
-        let mut window =  
-            video_subsystem
+
+        let mut window = video_subsystem
             .window(TITLE, width, height)
             .allow_highdpi()
             .build()
@@ -97,7 +95,6 @@ impl<'a> ScreenSaver<'a> {
             window.set_fullscreen(FullscreenType::Desktop).unwrap();
             sdl_context.mouse().show_cursor(false);
         }
-            
         let event_pump = sdl_context.event_pump().unwrap();
 
         let (w, h) = window.size();
@@ -142,7 +139,6 @@ impl<'a> ScreenSaver<'a> {
             rectsize,
         );
 
-
         let bgrect = Rect::new(0, 0, rectsize, rectsize);
 
         // dbg!(PixelFormatEnum::RGB24.into_masks());
@@ -157,14 +153,14 @@ impl<'a> ScreenSaver<'a> {
             event_pump,
             hour_background,
             min_background,
-            bgrect,
+            // bgrect,
             bg,
             font_time,
             font_mode,
             opt,
             // past_h: RefCell::new(-1),
             // past_m: RefCell::new(-1),
-//            radius,
+            //            radius,
             animate: true,
             time_subsystem,
             event_subsystem,
@@ -173,47 +169,51 @@ impl<'a> ScreenSaver<'a> {
 
     pub fn run(&mut self) {
         self.render_clock(20, 19);
-        
         let event_subsystem = &self.event_subsystem;
-        let _timer = self.time_subsystem.add_timer(60, Box::new(move || {
-            let time_i = time::now();
+        let _timer = self.time_subsystem.add_timer(
+            60,
+            Box::new(move || {
+                let time_i = time::now();
 
-            let interval = if time_i.tm_min != PAST_M.load(Ordering::Relaxed) as i32 {
-                let e = Event::User {
-                    type_: EventType::User as u32,
-                    code: 0,
-                    data1: std::ptr::null_mut(),
-                    data2: std::ptr::null_mut(),
-                    window_id: 0,
-                    timestamp: 0,
+                let interval = if time_i.tm_min != PAST_M.load(Ordering::Relaxed) as i32 {
+                    let e = Event::User {
+                        type_: EventType::User as u32,
+                        code: 0,
+                        data1: std::ptr::null_mut(),
+                        data2: std::ptr::null_mut(),
+                        window_id: 0,
+                        timestamp: 0,
+                    };
+                    event_subsystem.push_event(e).unwrap();
+                    // println!("push event");
+                    (1000 * (60 - time_i.tm_sec) - 250) as u32
+                } else {
+                    250
                 };
-                event_subsystem.push_event(e).unwrap();
-                // println!("push event");
-                (1000 * (60 - time_i.tm_sec) - 250) as u32
-            } else {
-                250
-            };
-            interval
-        }));
+                interval
+            }),
+        );
+
+        let mut receive_user_event = false;
 
         'running: loop {
-            let mut receive_user_event = false;
-
-            for event in self.event_pump.poll_iter() {
-                match event {
-                    Event::User { .. } => receive_user_event = true,
-                    Event::Quit { .. } => break 'running,
-                    Event::KeyDown { keycode, .. } => match keycode {
-                        Some(Keycode::Escape) | Some(Keycode::Q) => break 'running,
-                        _ => {}
-                    },
+            // for event in self.event_pump.poll_iter() {
+            let event = self.event_pump.wait_event();
+            match event {
+                Event::User { .. } => receive_user_event = true,
+                Event::Quit { .. } => break 'running,
+                Event::KeyDown { keycode, .. } => match keycode {
+                    Some(Keycode::Escape) | Some(Keycode::Q) => break 'running,
                     _ => {}
-                }
+                },
+                _ => {}
             }
+            // }
 
             if receive_user_event {
                 // println!("receive {}", receive_user_event);
                 self.render_animation();
+                receive_user_event = false;
             }
 
             // let mut screen = self.window.surface(&self.event_pump).unwrap();
@@ -222,9 +222,9 @@ impl<'a> ScreenSaver<'a> {
 
             // fill_rounded_box_b(&mut self.bg, &self.bgrect, self.radius, BACKGROUND_COLOR);
 
-            self.render_clock(20, 19);
+            // self.render_clock(20, 19);
             // fill_rounded_box_b(&mut self.bg, &self.bgrect, self.radius, BACKGROUND_COLOR);
-            std::thread::sleep(std::time::Duration::from_millis(100));
+            // std::thread::sleep(std::time::Duration::from_millis(100));
         }
     }
 
@@ -240,15 +240,15 @@ impl<'a> ScreenSaver<'a> {
             rect.x() + (rect.height() as f32 * 0.07) as i32,
             rect.y()
                 + if pm {
-                rect.height() as i32 - offset - ampm.height() as i32
-            } else {
-                offset
-            },
+                    rect.height() as i32 - offset - ampm.height() as i32
+                } else {
+                    offset
+                },
             0,
             0,
         );
         // surface.blit(src_rect: R1, dst: &mut SurfaceRef, dst_rect: R2)
-        ampm.blit(None, surface, coords);
+        ampm.blit(None, surface, coords).unwrap();
     }
 
     fn blit_digits(
@@ -271,11 +271,7 @@ impl<'a> ScreenSaver<'a> {
                 .font_time
                 .find_glyph_metrics(digits.chars().nth(0).unwrap())
                 .unwrap();
-            let glyph = self
-                .font_time
-                .render(&digits[0..1])
-                .blended(color)
-                .unwrap();
+            let glyph = self.font_time.render(&digits[0..1]).blended(color).unwrap();
             let coords = Rect::new(
                 center_x - glyph_metrics.maxx + glyph_metrics.minx
                     - spc
@@ -290,11 +286,7 @@ impl<'a> ScreenSaver<'a> {
                 .font_time
                 .find_glyph_metrics(digits.chars().nth(1).unwrap())
                 .unwrap();
-            let glyph = self
-                .font_time
-                .render(&digits[1..2])
-                .blended(color)
-                .unwrap();
+            let glyph = self.font_time.render(&digits[1..2]).blended(color).unwrap();
             let coords = Rect::new(
                 center_x + spc / 2,
                 rect.y() + (rect.height() as i32 - glyph.height() as i32) / 2,
@@ -303,11 +295,7 @@ impl<'a> ScreenSaver<'a> {
             );
             glyph.blit(None, surface, coords).unwrap();
         } else {
-            let glyph = self
-                .font_time
-                .render(&digits[0..1])
-                .blended(color)
-                .unwrap();
+            let glyph = self.font_time.render(&digits[0..1]).blended(color).unwrap();
             let coords = Rect::new(
                 center_x - glyph.width() as i32 / 2,
                 rect.y() + (rect.height() as i32 - glyph.height() as i32) / 2,
@@ -395,10 +383,10 @@ impl<'a> ScreenSaver<'a> {
             background.x(),
             background.y()
                 + if upperhalf {
-                (background.height() as i32 - scaled.height() as i32) / 2
-            } else {
-                background.height() as i32 / 2
-            },
+                    (background.height() as i32 - scaled.height() as i32) / 2
+                } else {
+                    background.height() as i32 / 2
+                },
             rect.width(),
             rect.height(),
         );
@@ -417,7 +405,7 @@ impl<'a> ScreenSaver<'a> {
         //     background.width(),
         //     (surface.height() as f32 * 0.005) as u32,
         // );
-        rect.set_height((surface.height() as f32 * 0.005) as u32 );
+        rect.set_height((surface.height() as f32 * 0.005) as u32);
         rect.set_width(background.width());
         rect.set_x(background.x());
         rect.set_y(background.y() + (background.height() as i32 - rect.height() as i32) / 2);
@@ -425,12 +413,14 @@ impl<'a> ScreenSaver<'a> {
         surface.fill_rect(rect, Color::RGB(0, 0, 0)).unwrap();
         rect.set_y(rect.y() + rect.height() as i32);
         rect.set_height(1);
-        surface.fill_rect(rect, Color::RGB(0x1a, 0x1a, 0x1a)).unwrap();
+        surface
+            .fill_rect(rect, Color::RGB(0x1a, 0x1a, 0x1a))
+            .unwrap();
     }
 
     fn render_clock(&self, maxsteps: i32, step: i32) {
-//        let mut buffer = String::with_capacity(2);
-//        let mut buffer2 = String::with_capacity(2);
+        //        let mut buffer = String::with_capacity(2);
+        //        let mut buffer2 = String::with_capacity(2);
         // let mut buffer: Vec<u8> = Vec::with_capacity(3);
         // let mut buffer2: Vec<u8> = Vec::with_capacity(3);
 
@@ -443,8 +433,6 @@ impl<'a> ScreenSaver<'a> {
             } else {
                 tm.tm_hour
             };
-            
-            
             // let (buffer, buffer2) = if self.opt.leadingzero {
             //     (format!("{:02}", h), format!("{:02}", self.past_h))
             // } else {
@@ -456,7 +444,7 @@ impl<'a> ScreenSaver<'a> {
             if self.opt.leadingzero {
                 write!(&mut buffer, "{:02}", h).unwrap();
                 write!(&mut buffer2, "{:02}", PAST_H.load(Ordering::Relaxed)).unwrap();
-            }else {
+            } else {
                 write!(&mut buffer, "{}", h).unwrap();
                 write!(&mut buffer2, "{}", PAST_H.load(Ordering::Relaxed)).unwrap();
             }
@@ -480,13 +468,20 @@ impl<'a> ScreenSaver<'a> {
         if tm.tm_min != PAST_M.load(Ordering::Relaxed) as i32 {
             let buffer = format!("{:02}", tm.tm_min);
             let buffer2 = format!("{:02}", PAST_M.load(Ordering::Relaxed));
-            self.render_digits(&mut screen, self.min_background, &buffer, &buffer2, maxsteps, step);
+            self.render_digits(
+                &mut screen,
+                self.min_background,
+                &buffer,
+                &buffer2,
+                maxsteps,
+                step,
+            );
 
             // println!("buffer: {}", buffer);
             // println!("buffer2: {}", buffer2);
         }
 
-//        println!("tm: {:#?}", tm);
+        //        println!("tm: {:#?}", tm);
 
         screen.finish().unwrap();
 
@@ -503,7 +498,7 @@ impl<'a> ScreenSaver<'a> {
         }
 
         let duration = ::std::time::Duration::from_millis(260);
-//        let start_tick = self.time_subsystem.ticks();
+        //        let start_tick = self.time_subsystem.ticks();
         let start_tick = ::std::time::Instant::now();
         let end_tick = start_tick + duration;
 
@@ -514,30 +509,31 @@ impl<'a> ScreenSaver<'a> {
                 done = true;
                 current_tick = end_tick;
             }
-            let frame = 99 * (current_tick - start_tick).as_millis() / (end_tick - start_tick).as_millis();
+            let frame =
+                99 * (current_tick - start_tick).as_millis() / (end_tick - start_tick).as_millis();
             self.render_clock(100, frame as i32);
         }
     }
 
-//     fn update_time(&mut self) -> u32 {
-//         let time_i = time::now();
+    //     fn update_time(&mut self) -> u32 {
+    //         let time_i = time::now();
 
-//         let interval = if time_i.tm_min != self.past_m {
-// //            let e = Event::User {
-// //                timestamp: 0,
-// //                code: 0,
-// //                data1: std::ptr::null_mut(),
-// //                data2: std::ptr::null_mut(),
-// //                type_: EventType::User as u32,
-// //            };
-// //            let e = Event::User::default();
+    //         let interval = if time_i.tm_min != self.past_m {
+    // //            let e = Event::User {
+    // //                timestamp: 0,
+    // //                code: 0,
+    // //                data1: std::ptr::null_mut(),
+    // //                data2: std::ptr::null_mut(),
+    // //                type_: EventType::User as u32,
+    // //            };
+    // //            let e = Event::User::default();
 
-//             (1000 * (60 - time_i.tm_sec) - 250) as u32
-//         } else {
-//             250
-//         };
-//         interval
-//     }
+    //             (1000 * (60 - time_i.tm_min) - 250) as u32
+    //         } else {
+    //             250
+    //         };
+    //         interval
+    //     }
 }
 
 fn main() -> Result<(), String> {
@@ -554,7 +550,6 @@ fn main() -> Result<(), String> {
 
     Ok(())
 }
-
 
 fn fill_rounded_box_b(dst: &mut SurfaceRef, coords: &Rect, r: i32, color: Color) {
     let pixcolor = color.to_u32(&dst.pixel_format());
@@ -573,9 +568,7 @@ fn fill_rounded_box_b(dst: &mut SurfaceRef, coords: &Rect, r: i32, color: Color)
     }
 
     dst.with_lock_mut(|pixels| {
-        let (_prefix, pixels, _suffix) = unsafe {
-            pixels.align_to_mut::<u32>()
-        };
+        let (_prefix, pixels, _suffix) = unsafe { pixels.align_to_mut::<u32>() };
 
         let sy: i32 = (yo - h) * yd;
         let ey: i32 = (yo + h) * yd;
@@ -591,7 +584,7 @@ fn fill_rounded_box_b(dst: &mut SurfaceRef, coords: &Rect, r: i32, color: Color)
                 // pixels[index + 3] = color.a;
 
                 // 如果我没理解错，就是一次赋4个值
-//                set_pixels(pixels, i + j, pixcolor);
+                //                set_pixels(pixels, i + j, pixcolor);
                 pixels[(i + j) as usize] = pixcolor;
             }
         }
@@ -610,27 +603,24 @@ fn fill_rounded_box_b(dst: &mut SurfaceRef, coords: &Rect, r: i32, color: Color)
             }
 
             for i in (sx - x)..=(ex + x) {
-//                set_pixels(pixels, , pixcolor);
+                //                set_pixels(pixels, , pixcolor);
                 pixels[(sy - y * yd + i) as usize] = pixcolor;
             }
 
-
             for i in (sx - y)..=(ex + y) {
-//                set_pixels(pixels, sy - x * yd + i, pixcolor);
+                //                set_pixels(pixels, sy - x * yd + i, pixcolor);
                 pixels[(sy - x * yd + i) as usize] = pixcolor;
             }
 
             for i in (sx - y)..=(ex + y) {
-//                set_pixels(pixels, ey + x * yd + i, pixcolor);
+                //                set_pixels(pixels, ey + x * yd + i, pixcolor);
                 pixels[(ey + x * yd + i) as usize] = pixcolor;
             }
 
             for i in (sx - x)..=(ex + x) {
-//                set_pixels(pixels, ey + y * yd + i, pixcolor);
+                //                set_pixels(pixels, ey + y * yd + i, pixcolor);
                 pixels[(ey + y * yd + i) as usize] = pixcolor;
             }
         }
     });
 }
-
-
