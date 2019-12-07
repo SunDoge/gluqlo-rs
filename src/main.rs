@@ -7,7 +7,7 @@ use sdl2::surface::{Surface, SurfaceRef};
 // use time;
 use sdl2::{
     gfx::rotozoom::RotozoomSurface, ttf::Font, ttf::Sdl2TtfContext, video::Window,
-    video::WindowSurfaceRef, EventPump, Sdl, TimerSubsystem, EventSubsystem,
+    EventPump, Sdl, TimerSubsystem, EventSubsystem, video::FullscreenType,
 };
 use std::fmt::Write;
 use structopt::StructOpt;
@@ -52,6 +52,9 @@ struct Opt {
 
     #[structopt(long = "leardingzero")]
     leadingzero: bool,
+
+    #[structopt(short, long)]
+    fullscreen: bool,
 }
 
 struct ScreenSaver<'a> {
@@ -70,6 +73,7 @@ struct ScreenSaver<'a> {
     animate: bool,
     time_subsystem: TimerSubsystem,
     event_subsystem: EventSubsystem,
+    // mouse_util: MouseUtil,
 }
 
 impl<'a> ScreenSaver<'a> {
@@ -81,10 +85,19 @@ impl<'a> ScreenSaver<'a> {
         let mut width = opt.width;
         let mut height = opt.height;
         let video_subsystem = sdl_context.video().unwrap();
-        let window = video_subsystem
+        
+        let mut window =  
+            video_subsystem
             .window(TITLE, width, height)
+            .allow_highdpi()
             .build()
             .unwrap();
+
+        if opt.fullscreen {
+            window.set_fullscreen(FullscreenType::Desktop).unwrap();
+            sdl_context.mouse().show_cursor(false);
+        }
+            
         let event_pump = sdl_context.event_pump().unwrap();
 
         let (w, h) = window.size();
@@ -271,9 +284,9 @@ impl<'a> ScreenSaver<'a> {
                 0,
                 0,
             );
-            glyph.blit(None, surface, coords);
+            glyph.blit(None, surface, coords).unwrap();
 
-            let glyph_metrics = self
+            let _glyph_metrics = self
                 .font_time
                 .find_glyph_metrics(digits.chars().nth(1).unwrap())
                 .unwrap();
@@ -288,7 +301,7 @@ impl<'a> ScreenSaver<'a> {
                 0,
                 0,
             );
-            glyph.blit(None, surface, coords);
+            glyph.blit(None, surface, coords).unwrap();
         } else {
             let glyph = self
                 .font_time
@@ -301,7 +314,7 @@ impl<'a> ScreenSaver<'a> {
                 0,
                 0,
             );
-            glyph.blit(None, surface, coords);
+            glyph.blit(None, surface, coords).unwrap();
         }
     }
 
@@ -323,7 +336,7 @@ impl<'a> ScreenSaver<'a> {
             background.height() / 2,
         );
         surface.set_clip_rect(rect);
-        self.bg.blit(None, surface, rect);
+        self.bg.blit(None, surface, rect).unwrap();
         self.blit_digits(surface, background, spc, digits, FONT_COLOR);
         surface.set_clip_rect(None);
 
@@ -390,7 +403,7 @@ impl<'a> ScreenSaver<'a> {
             rect.height(),
         );
         surface.set_clip_rect(dstrect);
-        scaled.blit(rect, surface, dstrect);
+        scaled.blit(rect, surface, dstrect).unwrap();
         surface.set_clip_rect(None);
 
         if !self.animate {
@@ -409,10 +422,10 @@ impl<'a> ScreenSaver<'a> {
         rect.set_x(background.x());
         rect.set_y(background.y() + (background.height() as i32 - rect.height() as i32) / 2);
 
-        surface.fill_rect(rect, Color::RGB(0, 0, 0));
+        surface.fill_rect(rect, Color::RGB(0, 0, 0)).unwrap();
         rect.set_y(rect.y() + rect.height() as i32);
         rect.set_height(1);
-        surface.fill_rect(rect, Color::RGB(0x1a, 0x1a, 0x1a));
+        surface.fill_rect(rect, Color::RGB(0x1a, 0x1a, 0x1a)).unwrap();
     }
 
     fn render_clock(&self, maxsteps: i32, step: i32) {
@@ -441,11 +454,11 @@ impl<'a> ScreenSaver<'a> {
             let mut buffer2 = String::with_capacity(2);
 
             if self.opt.leadingzero {
-                write!(&mut buffer, "{:02}", h);
-                write!(&mut buffer2, "{:02}", PAST_H.load(Ordering::Relaxed));
+                write!(&mut buffer, "{:02}", h).unwrap();
+                write!(&mut buffer2, "{:02}", PAST_H.load(Ordering::Relaxed)).unwrap();
             }else {
-                write!(&mut buffer, "{}", h);
-                write!(&mut buffer2, "{}", PAST_H.load(Ordering::Relaxed));
+                write!(&mut buffer, "{}", h).unwrap();
+                write!(&mut buffer2, "{}", PAST_H.load(Ordering::Relaxed)).unwrap();
             }
 
             self.render_digits(
@@ -542,11 +555,6 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-fn set_pixels(pixels: &mut [u8], index: i32, pixcolor: u32) {
-    unsafe {
-        *(pixels.as_mut_ptr() as *mut u32).add(index as usize) = pixcolor;
-    }
-}
 
 fn fill_rounded_box_b(dst: &mut SurfaceRef, coords: &Rect, r: i32, color: Color) {
     let pixcolor = color.to_u32(&dst.pixel_format());
