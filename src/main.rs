@@ -14,8 +14,8 @@ use std::sync::atomic::{AtomicIsize, Ordering};
 use structopt::StructOpt;
 // use std::cell::RefCell;
 
-const FONT: &'static str = "gluqlo.ttf";
-const TITLE: &'static str = "Gluqlo 1.1";
+const FONT: &str = "gluqlo.ttf";
+const TITLE: &str = "Gluqlo 1.1";
 
 const DEFAULT_A: u8 = 0xff;
 const FONT_COLOR: Color = Color {
@@ -259,7 +259,7 @@ impl<'a> ScreenSaver<'a> {
         digits: &str,
         color: Color,
     ) {
-        let adjust_x = if digits.starts_with("1") {
+        let adjust_x = if digits.starts_with('1') {
             (2.5 * spc as f32) as i32
         } else {
             0
