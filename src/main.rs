@@ -222,9 +222,9 @@ impl<'a> ScreenSaver<'a> {
 
             // fill_rounded_box_b(&mut self.bg, &self.bgrect, self.radius, BACKGROUND_COLOR);
 
-            // self.render_clock(20, 19);
+            self.render_clock(20, 19);
             // fill_rounded_box_b(&mut self.bg, &self.bgrect, self.radius, BACKGROUND_COLOR);
-            // std::thread::sleep(std::time::Duration::from_millis(100));
+            std::thread::sleep(std::time::Duration::from_millis(100));
         }
     }
 
@@ -288,6 +288,7 @@ impl<'a> ScreenSaver<'a> {
                 0,
                 0,
             );
+            // dbg!(coords.x());
             glyph.blit(None, surface, coords).unwrap();
 
             // let _glyph_metrics = self
@@ -328,8 +329,8 @@ impl<'a> ScreenSaver<'a> {
         step: i32,
     ) {
         let spc = (surface.height() as f32 * 0.0125) as i32;
-        dbg!(surface.height());
-        dbg!(spc);
+        // dbg!(surface.height());
+        // dbg!(spc);
 
         let mut rect = Rect::new(
             background.x(),
@@ -351,9 +352,9 @@ impl<'a> ScreenSaver<'a> {
         };
 
         let c = if upperhalf {
-            0xb7 - 0xb7 * (step as f32 / (halfsteps as f32 - 1.)) as u8
+            0xb7 - (0xb7 as f32 * step as f32 / (halfsteps as f32 - 1.)) as u8
         } else {
-            0xb7 * ((step as f32 - halfsteps as f32 + 1.) / halfsteps as f32) as u8
+            (0xb7 as f32 * (step as f32 - halfsteps as f32 + 1.) / halfsteps as f32) as u8
         };
 
         let color = Color::RGB(c, c, c);
