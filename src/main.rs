@@ -119,7 +119,7 @@ impl<'a> ScreenSaver<'a> {
         let mut jitter_width: i32 = 1;
         let mut jitter_height: i32 = 1;
 
-        if opt.display_scale_factor != 1. {
+        if (opt.display_scale_factor - 1.) <= ::std::f32::EPSILON {
             jitter_width = ((w - width) as f32 * 0.5) as i32;
             jitter_height = ((h - height) as f32 * 0.5) as i32;
         }
@@ -260,10 +260,12 @@ impl<'a> ScreenSaver<'a> {
         color: Color,
     ) {
         let adjust_x = if digits.starts_with('1') {
+            // println!("{}", digits);
             (2.5 * spc as f32) as i32
         } else {
             0
         };
+        // println!("adjust x={}", adjust_x);
         let center_x = rect.x() + rect.width() as i32 / 2 - adjust_x;
 
         if digits.len() > 1 {
@@ -271,22 +273,32 @@ impl<'a> ScreenSaver<'a> {
                 .font_time
                 .find_glyph_metrics(digits.chars().nth(0).unwrap())
                 .unwrap();
-            let glyph = self.font_time.render(&digits[0..1]).blended(color).unwrap();
+            let glyph = self
+                .font_time
+                .render_char(digits.chars().nth(0).unwrap())
+                .blended(color)
+                .unwrap();
+
+            // dbg!(&glyph_metrics);
             let coords = Rect::new(
                 center_x - glyph_metrics.maxx + glyph_metrics.minx
                     - spc
-                    - (if adjust_x > 0 { spc } else { 0 }),
+                    - if adjust_x > 0 { spc } else { 0 },
                 rect.y() + (rect.height() as i32 - glyph.height() as i32) / 2,
                 0,
                 0,
             );
             glyph.blit(None, surface, coords).unwrap();
 
-            let _glyph_metrics = self
+            // let _glyph_metrics = self
+            //     .font_time
+            //     .find_glyph_metrics(digits.chars().nth(1).unwrap())
+            //     .unwrap();
+            let glyph = self
                 .font_time
-                .find_glyph_metrics(digits.chars().nth(1).unwrap())
+                .render_char(digits.chars().nth(1).unwrap())
+                .blended(color)
                 .unwrap();
-            let glyph = self.font_time.render(&digits[1..2]).blended(color).unwrap();
             let coords = Rect::new(
                 center_x + spc / 2,
                 rect.y() + (rect.height() as i32 - glyph.height() as i32) / 2,
@@ -316,6 +328,8 @@ impl<'a> ScreenSaver<'a> {
         step: i32,
     ) {
         let spc = (surface.height() as f32 * 0.0125) as i32;
+        dbg!(surface.height());
+        dbg!(spc);
 
         let mut rect = Rect::new(
             background.x(),
