@@ -119,7 +119,7 @@ impl<'a> ScreenSaver<'a> {
         let mut jitter_width: i32 = 1;
         let mut jitter_height: i32 = 1;
 
-        if (opt.display_scale_factor - 1.) <= ::std::f32::EPSILON {
+        if (opt.display_scale_factor - 1.) > ::std::f32::EPSILON {
             jitter_width = ((w - width) as f32 * 0.5) as i32;
             jitter_height = ((h - height) as f32 * 0.5) as i32;
         }
@@ -194,7 +194,7 @@ impl<'a> ScreenSaver<'a> {
             }),
         );
 
-        let mut receive_user_event = false;
+        let mut receive_user_event = true;
 
         'running: loop {
             // for event in self.event_pump.poll_iter() {
@@ -222,9 +222,9 @@ impl<'a> ScreenSaver<'a> {
 
             // fill_rounded_box_b(&mut self.bg, &self.bgrect, self.radius, BACKGROUND_COLOR);
 
-            self.render_clock(20, 19);
+            // self.render_clock(20, 19);
             // fill_rounded_box_b(&mut self.bg, &self.bgrect, self.radius, BACKGROUND_COLOR);
-            std::thread::sleep(std::time::Duration::from_millis(100));
+            // std::thread::sleep(std::time::Duration::from_millis(100));
         }
     }
 
@@ -267,11 +267,12 @@ impl<'a> ScreenSaver<'a> {
         };
         // println!("adjust x={}", adjust_x);
         let center_x = rect.x() + rect.width() as i32 / 2 - adjust_x;
+        // println!("center_x={}, rect-x={}, rect-w={}", center_x, rect.x(), rect.width());
 
         if digits.len() > 1 {
             let glyph_metrics = self
                 .font_time
-                .find_glyph_metrics(digits.chars().nth(0).unwrap())
+                .find_glyph_metrics(digits.chars().nth(1).unwrap())
                 .unwrap();
             let glyph = self
                 .font_time
@@ -280,6 +281,8 @@ impl<'a> ScreenSaver<'a> {
                 .unwrap();
 
             // dbg!(&glyph_metrics);
+            // println!("max_x={}, min_x={}", glyph_metrics.maxx, glyph_metrics.minx);
+
             let coords = Rect::new(
                 center_x - glyph_metrics.maxx + glyph_metrics.minx
                     - spc
