@@ -1,3 +1,3 @@
 # gluqlo-rs
 
-![screenshot](screenshot.png)
+![screenshot](screenshot.webp)
